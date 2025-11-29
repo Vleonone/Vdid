@@ -418,7 +418,7 @@ export default function SecurityPage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-zinc-400">
                           <span>{wallet.chainName}</span>
-                          <span>â€?/span>
+                          <span>â€¢</span>
                           <span className="font-mono">{formatAddress(wallet.walletAddress)}</span>
                           <button
                             onClick={() => copyAddress(wallet.walletAddress)}
@@ -607,7 +607,7 @@ export default function SecurityPage() {
                       )}
                     </div>
                     <p className="text-sm text-zinc-400">
-                      {session.location} â€?{session.lastActive}
+                      {session.location} â€¢ {session.lastActive}
                     </p>
                   </div>
                 </div>
