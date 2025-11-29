@@ -4,6 +4,11 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import path from "path";
 
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Import routes
 import authRoutes from "./routes/auth.routes";
 import walletRoutes from "./routes/wallet.routes";
