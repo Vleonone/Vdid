@@ -164,7 +164,7 @@ export function notFoundHandler(req: Request, res: Response): void {
   const errorResponse: ErrorResponse = {
     success: false,
     error: {
-      message: `Route ${req.method} ${req.path} not found`,
+      message: `Route ${req.method} ${req.originalUrl} not found`,
       code: 'ROUTE_NOT_FOUND',
     },
     timestamp: new Date().toISOString(),
