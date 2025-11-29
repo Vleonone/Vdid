@@ -8,11 +8,12 @@
  * - 凭证验证
  */
 
-import { db } from '../db/index.js';
-import { users, passkeys, sessions, activityLogs } from '../../shared/schema.js';
+import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
-import { signTokens, generateSessionToken } from '../lib/jwt.js';
+import { signTokens, generateSessionToken } from '../lib/jwt';
 import crypto from 'crypto';
+
+const { users, passkeys, sessions, activityLogs } = schema;
 
 // WebAuthn 配置
 const RP_NAME = 'VDID - Velon Decentralized Identity';

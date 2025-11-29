@@ -13,9 +13,10 @@
  * API 文档: https://docs.lens.xyz/
  */
 
-import { db } from '../db/index.js';
-import { users, lensProfiles, activityLogs } from '../../shared/schema.js';
+import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
+
+const { users, activityLogs, lensProfiles } = schema;
 
 // Lens Protocol 配置
 const LENS_API_URL = 'https://api-v2.lens.dev/graphql';

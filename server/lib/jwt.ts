@@ -14,15 +14,15 @@ const JWT_REFRESH_EXPIRES = '7d';  // 刷新令牌 7 天
 
 // Token 类型
 export interface AccessTokenPayload {
-  userId: string;
+  userId: string | number;
   vid: string;
-  email: string;
+  email: string | null;
   sessionId: string;
   type: 'access';
 }
 
 export interface RefreshTokenPayload {
-  userId: string;
+  userId: string | number;
   sessionId: string;
   type: 'refresh';
 }
@@ -38,13 +38,14 @@ export interface TokenPair {
  * 生成访问令牌
  */
 export function generateAccessToken(payload: Omit<AccessTokenPayload, 'type'>): string {
+  const userIdStr = String(payload.userId);
   return jwt.sign(
-    { ...payload, type: 'access' },
+    { ...payload, userId: userIdStr, type: 'access' },
     JWT_SECRET,
     {
       expiresIn: JWT_ACCESS_EXPIRES,
       issuer: JWT_ISSUER,
-      subject: payload.userId,
+      subject: userIdStr,
     }
   );
 }
@@ -53,13 +54,14 @@ export function generateAccessToken(payload: Omit<AccessTokenPayload, 'type'>): 
  * 生成刷新令牌
  */
 export function generateRefreshToken(payload: Omit<RefreshTokenPayload, 'type'>): string {
+  const userIdStr = String(payload.userId);
   return jwt.sign(
-    { ...payload, type: 'refresh' },
+    { ...payload, userId: userIdStr, type: 'refresh' },
     JWT_SECRET,
     {
       expiresIn: JWT_REFRESH_EXPIRES,
       issuer: JWT_ISSUER,
-      subject: payload.userId,
+      subject: userIdStr,
     }
   );
 }
@@ -68,9 +70,9 @@ export function generateRefreshToken(payload: Omit<RefreshTokenPayload, 'type'>)
  * 生成令牌对 (访问令牌 + 刷新令牌)
  */
 export function generateTokenPair(
-  userId: string,
+  userId: string | number,
   vid: string,
-  email: string,
+  email: string | null,
   sessionId: string
 ): TokenPair {
   const now = new Date();
@@ -190,21 +192,21 @@ export function generateSessionToken(): string {
  * 签发令牌对 (兼容别名)
  */
 export function signTokens(payload: {
-  userId: string;
+  userId: string | number;
   vid: string;
   sessionToken: string;
 }): { accessToken: string; refreshToken: string } {
   const accessToken = generateAccessToken({
     userId: payload.userId,
     vid: payload.vid,
-    email: '',
+    email: null,
     sessionId: payload.sessionToken,
   });
-  
+
   const refreshToken = generateRefreshToken({
     userId: payload.userId,
     sessionId: payload.sessionToken,
   });
-  
+
   return { accessToken, refreshToken };
 }

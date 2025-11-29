@@ -37,10 +37,10 @@ export interface AuthResult {
 }
 
 export interface SafeUser {
-  id: string;
+  id: number;
   vid: string;
   did: string | null;
-  email: string;
+  email: string | null;
   emailVerified: boolean;
   displayName: string | null;
   avatar: string | null;
@@ -91,7 +91,7 @@ function toSafeUser(user: typeof users.$inferSelect): SafeUser {
  * 记录活动日志
  */
 async function logActivity(
-  userId: string | null,
+  userId: number | null,
   action: string,
   category: string,
   details: Record<string, unknown>,
@@ -434,7 +434,7 @@ export class AuthService {
   /**
    * 登出所有设备
    */
-  async logoutAll(userId: string): Promise<boolean> {
+  async logoutAll(userId: number): Promise<boolean> {
     try {
       await db.update(sessions)
         .set({ isActive: false })
@@ -448,7 +448,7 @@ export class AuthService {
   /**
    * 获取用户信息
    */
-  async getUser(userId: string): Promise<SafeUser | null> {
+  async getUser(userId: number): Promise<SafeUser | null> {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
     });

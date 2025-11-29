@@ -8,12 +8,13 @@
  * - 多链地址管理
  */
 
-import { db } from '../db/index.js';
-import { users, web3Identities, sessions, activityLogs } from '../../shared/schema.js';
+import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
-import { generateVID } from '../lib/vid-generator.js';
-import { signTokens, generateSessionToken } from '../lib/jwt.js';
+import { generateVID } from '../lib/vid-generator';
+import { signTokens, generateSessionToken } from '../lib/jwt';
 import crypto from 'crypto';
+
+const { users, web3Identities, sessions, activityLogs } = schema;
 
 // 支持的链配置
 const SUPPORTED_CHAINS: Record<number, { name: string; symbol: string }> = {

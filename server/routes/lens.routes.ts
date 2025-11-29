@@ -16,7 +16,7 @@ import {
   getUserLensProfiles,
   setPrimaryLensProfile,
   getLensProfiles,
-} from '../services/lens.service.js';
+} from '../services/lens.service';
 
 const router = Router();
 

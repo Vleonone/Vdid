@@ -20,7 +20,7 @@ import {
   getUserPasskeys,
   deletePasskey,
   renamePasskey,
-} from '../services/passkeys.service.js';
+} from '../services/passkeys.service';
 
 const router = Router();
 

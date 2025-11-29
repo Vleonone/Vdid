@@ -19,7 +19,7 @@ import {
   getUserWeb3Identities,
   unbindWallet,
   isValidEthereumAddress,
-} from '../services/wallet.service.js';
+} from '../services/wallet.service';
 
 const router = Router();
 
