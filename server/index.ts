@@ -13,6 +13,9 @@ import rateLimit from 'express-rate-limit';
 // 路由
 import authRoutes from './routes/auth.routes';
 import vscoreRoutes from './routes/vscore.routes';
+import walletRoutes from './routes/wallet.routes';
+import passkeysRoutes from './routes/passkeys.routes';
+import lensRoutes from './routes/lens.routes';
 
 // 数据库
 import { checkDatabaseConnection } from './db';
@@ -105,11 +108,22 @@ app.get('/health', async (req: Request, res: Response) => {
 app.get('/api', (req: Request, res: Response) => {
   res.json({
     name: 'VDID API',
-    version: '1.0.0',
+    version: '2.0.0',
     description: 'Velon Decentralized Identity API',
     endpoints: {
       auth: '/api/auth',
       vscore: '/api/vscore',
+      wallet: '/api/wallet',
+      passkeys: '/api/passkeys',
+      lens: '/api/lens',
+    },
+    features: {
+      emailAuth: true,
+      walletAuth: true,
+      siwe: true,
+      passkeys: true,
+      ens: true,
+      lens: 'preview',
     },
     documentation: 'https://docs.vdid.io',
   });
@@ -120,6 +134,15 @@ app.use('/api/auth', authRoutes);
 
 // V-Score 路由
 app.use('/api/vscore', vscoreRoutes);
+
+// Web3 钱包路由
+app.use('/api/wallet', walletRoutes);
+
+// Passkeys/WebAuthn 路由
+app.use('/api/passkeys', passkeysRoutes);
+
+// Lens Protocol 路由
+app.use('/api/lens', lensRoutes);
 
 // ============================================
 // Static Files (for SPA)

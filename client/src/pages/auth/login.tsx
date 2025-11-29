@@ -3,21 +3,51 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Loader2 } from "lucide-react";
+import { Shield, Loader2, Wallet, KeyRound } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
+import { WalletConnect } from "@/components/wallet-connect";
 
 export default function Login() {
   const [_, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      localStorage.setItem('accessToken', data.accessToken);
       setLocation("/dashboard");
-    }, 1500);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleWalletSuccess = (data: { user: any; accessToken: string; isNewUser: boolean }) => {
+    if (data.isNewUser) {
+      setLocation("/dashboard?welcome=true");
+    } else {
+      setLocation("/dashboard");
+    }
   };
 
   return (
@@ -38,24 +68,60 @@ export default function Login() {
             <CardDescription>Choose your verification method</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="email" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary">
-                <TabsTrigger value="email">Email</TabsTrigger>
-                <TabsTrigger value="wallet">Wallet</TabsTrigger>
+            <Tabs defaultValue="wallet" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6 bg-secondary">
+                <TabsTrigger value="wallet" className="gap-1">
+                  <Wallet className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Wallet</span>
+                </TabsTrigger>
+                <TabsTrigger value="email" className="gap-1">
+                  <span>Email</span>
+                </TabsTrigger>
+                <TabsTrigger value="passkey" className="gap-1">
+                  <KeyRound className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Passkey</span>
+                </TabsTrigger>
               </TabsList>
               
+              <TabsContent value="wallet">
+                <WalletConnect 
+                  onSuccess={handleWalletSuccess}
+                  onError={(err) => setError(err.message)}
+                />
+              </TabsContent>
+              
               <TabsContent value="email">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleEmailLogin} className="space-y-4">
+                  {error && (
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+                      {error}
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="name@example.com" required className="bg-input border-secondary" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="name@example.com" 
+                      required 
+                      className="bg-input border-secondary"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
                       <a href="#" className="text-xs text-primary hover:underline">Forgot?</a>
                     </div>
-                    <Input id="password" type="password" required className="bg-input border-secondary" />
+                    <Input 
+                      id="password" 
+                      type="password" 
+                      required 
+                      className="bg-input border-secondary"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
                   </div>
                   <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" disabled={isLoading}>
                     {isLoading ? (
@@ -68,12 +134,15 @@ export default function Login() {
                 </form>
               </TabsContent>
               
-              <TabsContent value="wallet">
+              <TabsContent value="passkey">
                 <div className="space-y-4 py-4">
-                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" onClick={() => setLocation("/dashboard")}>
-                    Connect Wallet
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Sign In with Passkey
                   </Button>
-                  <p className="text-xs text-center text-muted-foreground">Sign a message to verify wallet ownership</p>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Use your device's biometrics or security key
+                  </p>
                 </div>
               </TabsContent>
             </Tabs>
@@ -84,6 +153,10 @@ export default function Login() {
             </p>
           </CardFooter>
         </Card>
+        
+        <p className="text-xs text-center text-muted-foreground">
+          Powered by <span className="text-primary">SIWE</span> • Secure • Decentralized
+        </p>
       </div>
     </div>
   );

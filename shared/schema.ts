@@ -54,10 +54,36 @@ export const users = pgTable('users', {
   twoFactorSecret: varchar('two_factor_secret', { length: 64 }),
   twoFactorBackupCodes: jsonb('two_factor_backup_codes').$type<string[]>(),
   
-  // 钱包绑定
+  // 钱包绑定 (Web3 核心)
   walletAddress: varchar('wallet_address', { length: 42 }),
   walletVerified: boolean('wallet_verified').default(false),
   walletSignature: text('wallet_signature'),
+  walletConnectedAt: timestamp('wallet_connected_at'),
+  
+  // SIWE (Sign-In with Ethereum)
+  siweNonce: varchar('siwe_nonce', { length: 64 }),
+  siweNonceExpires: timestamp('siwe_nonce_expires'),
+  
+  // ENS 域名
+  ensName: varchar('ens_name', { length: 255 }),
+  ensAvatar: text('ens_avatar'),
+  ensVerified: boolean('ens_verified').default(false),
+  
+  // Passkeys / WebAuthn
+  passkeyEnabled: boolean('passkey_enabled').default(false),
+  passkeyCredentialId: text('passkey_credential_id'),
+  passkeyPublicKey: text('passkey_public_key'),
+  passkeyCounter: integer('passkey_counter').default(0),
+  passkeyDeviceName: varchar('passkey_device_name', { length: 100 }),
+  
+  // Lens Protocol (预留)
+  lensHandle: varchar('lens_handle', { length: 100 }),
+  lensProfileId: varchar('lens_profile_id', { length: 66 }),
+  lensVerified: boolean('lens_verified').default(false),
+  
+  // 多链支持 (预留)
+  chainId: integer('chain_id').default(1), // 1 = Ethereum Mainnet
+  multiChainAddresses: jsonb('multi_chain_addresses').$type<Record<string, string>>(),
   
   // 用户资料
   displayName: varchar('display_name', { length: 50 }),
@@ -266,6 +292,117 @@ export const activityLogs = pgTable('activity_logs', {
 });
 
 // ============================================
+// Web3 Identities 表 - 多链钱包身份
+// ============================================
+export const web3Identities = pgTable('web3_identities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  
+  // 链信息
+  chainId: integer('chain_id').notNull(), // 1=ETH, 137=Polygon, 56=BSC, 42161=Arbitrum
+  chainName: varchar('chain_name', { length: 50 }).notNull(),
+  
+  // 钱包地址
+  address: varchar('address', { length: 42 }).notNull(),
+  addressChecksum: varchar('address_checksum', { length: 42 }).notNull(),
+  
+  // 验证状态
+  isVerified: boolean('is_verified').default(false),
+  verifiedAt: timestamp('verified_at'),
+  signature: text('signature'),
+  
+  // SIWE 信息
+  siweMessage: text('siwe_message'),
+  siweIssuedAt: timestamp('siwe_issued_at'),
+  
+  // ENS (仅 Ethereum)
+  ensName: varchar('ens_name', { length: 255 }),
+  ensAvatar: text('ens_avatar'),
+  
+  // 是否主地址
+  isPrimary: boolean('is_primary').default(false),
+  
+  // 时间戳
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
+// Passkeys 表 - WebAuthn 凭证 (支持多设备)
+// ============================================
+export const passkeys = pgTable('passkeys', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  
+  // WebAuthn 凭证信息
+  credentialId: text('credential_id').unique().notNull(),
+  publicKey: text('public_key').notNull(),
+  counter: integer('counter').default(0).notNull(),
+  
+  // 凭证元数据
+  aaguid: varchar('aaguid', { length: 36 }), // Authenticator 唯一标识
+  credentialType: varchar('credential_type', { length: 50 }).default('public-key'),
+  
+  // 设备信息
+  deviceName: varchar('device_name', { length: 100 }),
+  deviceType: varchar('device_type', { length: 30 }), // platform, cross-platform
+  
+  // 传输方式
+  transports: jsonb('transports').$type<string[]>(), // usb, nfc, ble, internal
+  
+  // 使用统计
+  lastUsedAt: timestamp('last_used_at'),
+  useCount: integer('use_count').default(0),
+  
+  // 状态
+  isActive: boolean('is_active').default(true),
+  
+  // 时间戳
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// Lens Profiles 表 - Lens Protocol 身份 (预留)
+// ============================================
+export const lensProfiles = pgTable('lens_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  
+  // Lens Profile 信息
+  profileId: varchar('profile_id', { length: 66 }).unique().notNull(), // 0x... hex
+  handle: varchar('handle', { length: 100 }).notNull(), // username.lens
+  
+  // Profile 元数据
+  name: varchar('name', { length: 100 }),
+  bio: text('bio'),
+  avatar: text('avatar'),
+  coverPicture: text('cover_picture'),
+  
+  // 链上信息
+  ownedBy: varchar('owned_by', { length: 42 }).notNull(), // 钱包地址
+  txHash: varchar('tx_hash', { length: 66 }),
+  
+  // 统计 (缓存)
+  followersCount: integer('followers_count').default(0),
+  followingCount: integer('following_count').default(0),
+  postsCount: integer('posts_count').default(0),
+  
+  // 验证状态
+  isVerified: boolean('is_verified').default(false),
+  verifiedAt: timestamp('verified_at'),
+  
+  // 是否主 Profile
+  isPrimary: boolean('is_primary').default(false),
+  
+  // 时间戳
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
 // V-Score History 表 - V-Score 历史记录
 // ============================================
 export const vscoreHistory = pgTable('vscore_history', {
@@ -353,6 +490,15 @@ export type NewActivityLog = typeof activityLogs.$inferInsert;
 export type VScoreHistory = typeof vscoreHistory.$inferSelect;
 export type NewVScoreHistory = typeof vscoreHistory.$inferInsert;
 
+export type Web3Identity = typeof web3Identities.$inferSelect;
+export type NewWeb3Identity = typeof web3Identities.$inferInsert;
+
+export type Passkey = typeof passkeys.$inferSelect;
+export type NewPasskey = typeof passkeys.$inferInsert;
+
+export type LensProfile = typeof lensProfiles.$inferSelect;
+export type NewLensProfile = typeof lensProfiles.$inferInsert;
+
 // ============================================
 // V-Score Level Helper
 // ============================================
@@ -395,3 +541,30 @@ export function calculateTotalVScore(
   );
   return Math.min(1000, Math.max(0, total));
 }
+
+// ============================================
+// Supported Chains Configuration
+// ============================================
+export const SUPPORTED_CHAINS = {
+  1: { name: 'Ethereum', symbol: 'ETH', explorer: 'https://etherscan.io' },
+  137: { name: 'Polygon', symbol: 'MATIC', explorer: 'https://polygonscan.com' },
+  42161: { name: 'Arbitrum', symbol: 'ETH', explorer: 'https://arbiscan.io' },
+  10: { name: 'Optimism', symbol: 'ETH', explorer: 'https://optimistic.etherscan.io' },
+  8453: { name: 'Base', symbol: 'ETH', explorer: 'https://basescan.org' },
+  56: { name: 'BNB Chain', symbol: 'BNB', explorer: 'https://bscscan.com' },
+} as const;
+
+export type SupportedChainId = keyof typeof SUPPORTED_CHAINS;
+
+// ============================================
+// Auth Method Types
+// ============================================
+export const AUTH_METHODS = {
+  EMAIL: 'email',
+  WALLET: 'wallet',
+  SIWE: 'siwe',
+  PASSKEY: 'passkey',
+  LENS: 'lens',
+} as const;
+
+export type AuthMethod = typeof AUTH_METHODS[keyof typeof AUTH_METHODS];
