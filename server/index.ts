@@ -40,7 +40,7 @@ app.use(helmet({
 // CORS
 app.use(cors({
   origin: NODE_ENV === 'production' 
-    ? ['https://vdid.io', 'https://www.vdid.io', 'https://vdid-production-f671.up.railway.app']
+    ? ['https://vdid.io', 'https://www.vdid.io', 'https://vdid-production-d371.up.railway.app']
     : true,
   credentials: true,
 }));
@@ -59,10 +59,10 @@ if (NODE_ENV !== 'production') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// 速率限制
+// 速率限制 (开发阶段放宽)
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000, // 每个 IP 最多 100 请求
+  windowMs: 15 * 60 * 1000, // 15 分钟
+  max: 1000, // 每个 IP 最多 1000 请求
   message: {
     success: false,
     error: 'Too many requests, please try again later.',
@@ -74,10 +74,10 @@ const limiter = rateLimit({
 // 对 API 路由应用速率限制
 app.use('/api/', limiter);
 
-// 更严格的登录限制
+// 登录限制 (开发阶段放宽)
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 小时
-  max: 10, // 每小时最多 10 次登录尝试
+  max: 100, // 每小时最多 100 次登录尝试
   message: {
     success: false,
     error: 'Too many login attempts, please try again later.',
