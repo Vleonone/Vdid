@@ -91,24 +91,27 @@ export async function getOrCreateNonce(address: string): Promise<{ nonce: string
   const normalizedAddress = checksumAddress(address);
   const nonce = generateSIWENonce();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-  
-  // 检查用户是否存在
-  const existingUser = await db.select()
+
+  // 检查用户是否存在 - 只选择必要的列以避免缺失列错误
+  const existingUser = await db.select({
+    id: users.id,
+    walletAddress: users.walletAddress,
+  })
     .from(users)
     .where(eq(users.walletAddress, normalizedAddress))
     .limit(1);
-  
+
   if (existingUser.length > 0) {
     // 更新现有用户的 nonce
     await db.update(users)
-      .set({ 
-        siweNonce: nonce, 
+      .set({
+        siweNonce: nonce,
         siweNonceExpires: expiresAt,
         updatedAt: new Date()
       })
       .where(eq(users.id, existingUser[0].id));
   }
-  
+
   return { nonce, expiresAt };
 }
 
@@ -184,8 +187,20 @@ export async function walletAuth(params: {
     throw new Error('Invalid signature');
   }
   
-  // 查找现有用户
-  let user = await db.select()
+  // 查找现有用户 - 只选择必要的列以避免缺失列错误
+  let user = await db.select({
+    id: users.id,
+    vid: users.vid,
+    did: users.did,
+    email: users.email,
+    displayName: users.displayName,
+    walletAddress: users.walletAddress,
+    ensName: users.ensName,
+    vscoreTotal: users.vscoreTotal,
+    vscoreLevel: users.vscoreLevel,
+    loginCount: users.loginCount,
+    passwordHash: users.passwordHash,
+  })
     .from(users)
     .where(eq(users.walletAddress, normalizedAddress))
     .limit(1)
@@ -329,12 +344,12 @@ export async function bindWallet(params: {
 }): Promise<{ success: boolean }> {
   const normalizedAddress = checksumAddress(params.address);
   
-  // 检查地址是否已被其他用户使用
-  const existingUser = await db.select()
+  // 检查地址是否已被其他用户使用 - 只选择必要的列
+  const existingUser = await db.select({ id: users.id })
     .from(users)
     .where(eq(users.walletAddress, normalizedAddress))
     .limit(1);
-  
+
   if (existingUser.length > 0 && existingUser[0].id !== params.userId) {
     throw new Error('This wallet is already linked to another account');
   }
@@ -402,13 +417,17 @@ export async function unbindWallet(userId: number, address: string): Promise<voi
       eq(web3Identities.address, normalizedAddress)
     ));
   
-  // 检查用户是否还有其他身份验证方式
-  const user = await db.select()
+  // 检查用户是否还有其他身份验证方式 - 只选择必要的列
+  const user = await db.select({
+    id: users.id,
+    walletAddress: users.walletAddress,
+    passwordHash: users.passwordHash,
+  })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
     .then(rows => rows[0]);
-  
+
   if (user && user.walletAddress === normalizedAddress) {
     // 如果是主钱包，检查是否有邮箱登录
     if (user.passwordHash === 'WALLET_AUTH_NO_PASSWORD') {

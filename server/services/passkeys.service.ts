@@ -66,17 +66,22 @@ export async function generateRegistrationOptions(userId: number): Promise<{
   };
   excludeCredentials: Array<{ id: string; type: string }>;
 }> {
-  // 获取用户信息
-  const user = await db.select()
+  // 获取用户信息 - 只选择必要的列
+  const user = await db.select({
+    id: users.id,
+    email: users.email,
+    vid: users.vid,
+    displayName: users.displayName,
+  })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
     .then(rows => rows[0]);
-  
+
   if (!user) {
     throw new Error('User not found');
   }
-  
+
   // 获取用户现有的 passkeys
   const existingPasskeys = await db.select()
     .from(passkeys)
@@ -194,14 +199,14 @@ export async function generateAuthenticationOptions(params?: {
   let allowCredentials: Array<{ id: string; type: string; transports?: string[] }> = [];
   let userId = params?.userId;
   
-  // 如果提供了 email，查找用户
+  // 如果提供了 email，查找用户 - 只选择必要的列
   if (params?.email && !userId) {
-    const user = await db.select()
+    const user = await db.select({ id: users.id })
       .from(users)
       .where(eq(users.email, params.email))
       .limit(1)
       .then(rows => rows[0]);
-    
+
     if (user) {
       userId = user.id;
     }
@@ -281,17 +286,26 @@ export async function verifyAuthentication(params: {
     })
     .where(eq(passkeys.id, passkey.id));
   
-  // 获取用户
-  const user = await db.select()
+  // 获取用户 - 只选择必要的列
+  const user = await db.select({
+    id: users.id,
+    vid: users.vid,
+    did: users.did,
+    email: users.email,
+    displayName: users.displayName,
+    vscoreTotal: users.vscoreTotal,
+    vscoreLevel: users.vscoreLevel,
+    loginCount: users.loginCount,
+  })
     .from(users)
     .where(eq(users.id, passkey.userId))
     .limit(1)
     .then(rows => rows[0]);
-  
+
   if (!user) {
     throw new Error('User not found');
   }
-  
+
   // 更新用户登录信息
   await db.update(users)
     .set({
@@ -375,8 +389,12 @@ export async function deletePasskey(userId: number, passkeyId: number): Promise<
     throw new Error('Passkey not found');
   }
   
-  // 检查是否是唯一的认证方式
-  const user = await db.select()
+  // 检查是否是唯一的认证方式 - 只选择必要的列
+  const user = await db.select({
+    id: users.id,
+    passwordHash: users.passwordHash,
+    walletVerified: users.walletVerified,
+  })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
