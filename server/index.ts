@@ -10,11 +10,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Import routes
-import authRoutes from "./routes/auth.routes";
-import walletRoutes from "./routes/wallet.routes";
-import multiWalletRoutes from "./routes/multi-wallet.routes";
-import passkeyRoutes from "./routes/passkeys.routes";
-import vscoreRoutes from "./routes/vscore.routes";
+import authRoutes from "./routes/auth.routes.js";
+import walletRoutes from "./routes/wallet.routes.js";
+import multiWalletRoutes from "./routes/multi-wallet.routes.js";
+import passkeyRoutes from "./routes/passkeys.routes.js";
+import vscoreRoutes from "./routes/vscore.routes.js";
 
 // Extend Express Request type
 declare global {
@@ -82,11 +82,17 @@ if (process.env.NODE_ENV === "production") {
   const clientPath = path.join(__dirname, "../client/dist");
   app.use(express.static(clientPath));
   
-  // SPA fallback
-  app.get("*", (req, res) => {
-    if (!req.path.startsWith("/api")) {
-      res.sendFile(path.join(clientPath, "index.html"));
+  // SPA fallback - must be after API routes
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      return next();
     }
+    res.sendFile(path.join(clientPath, "index.html"), (err) => {
+      if (err) {
+        console.error("Error serving index.html:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
   });
 }
 

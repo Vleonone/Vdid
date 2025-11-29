@@ -1,11 +1,19 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
+nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm ci --include=dev"]
+cmds = [
+  "npm install",
+  "cd client && npm install"
+]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = [
+  "cd client && npm run build"
+]
 
 [start]
 cmd = "npm run start"
+
+[variables]
+NODE_ENV = "production"
