@@ -61,8 +61,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // 速率限制
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 分钟
-  max: 100, // 每个 IP 最多 100 请求
+  windowMs: 15 * 60 * 1000,
+  max: 1000, // 每个 IP 最多 100 请求
   message: {
     success: false,
     error: 'Too many requests, please try again later.',
