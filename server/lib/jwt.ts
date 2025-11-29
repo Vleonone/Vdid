@@ -5,24 +5,25 @@
 
 import jwt from 'jsonwebtoken';
 import { generateSecureToken } from './vid-generator';
+import { config } from '../config';
 
-// JWT 配置
-const JWT_SECRET = process.env.JWT_SECRET || 'vdid-default-secret-change-in-production';
-const JWT_ISSUER = process.env.JWT_ISSUER || 'vdid.io';
+// JWT 配置 (从 config 获取，已验证)
+const JWT_SECRET = config.JWT_SECRET;
+const JWT_ISSUER = config.JWT_ISSUER;
 const JWT_ACCESS_EXPIRES = '15m';  // 访问令牌 15 分钟
 const JWT_REFRESH_EXPIRES = '7d';  // 刷新令牌 7 天
 
 // Token 类型
 export interface AccessTokenPayload {
-  userId: string;
+  userId: number;
   vid: string;
-  email: string;
+  email: string | null;
   sessionId: string;
   type: 'access';
 }
 
 export interface RefreshTokenPayload {
-  userId: string;
+  userId: number;
   sessionId: string;
   type: 'refresh';
 }
@@ -38,13 +39,14 @@ export interface TokenPair {
  * 生成访问令牌
  */
 export function generateAccessToken(payload: Omit<AccessTokenPayload, 'type'>): string {
+  const userIdStr = String(payload.userId);
   return jwt.sign(
-    { ...payload, type: 'access' },
+    { ...payload, userId: userIdStr, type: 'access' },
     JWT_SECRET,
     {
       expiresIn: JWT_ACCESS_EXPIRES,
       issuer: JWT_ISSUER,
-      subject: payload.userId,
+      subject: userIdStr,
     }
   );
 }
@@ -53,13 +55,14 @@ export function generateAccessToken(payload: Omit<AccessTokenPayload, 'type'>): 
  * 生成刷新令牌
  */
 export function generateRefreshToken(payload: Omit<RefreshTokenPayload, 'type'>): string {
+  const userIdStr = String(payload.userId);
   return jwt.sign(
-    { ...payload, type: 'refresh' },
+    { ...payload, userId: userIdStr, type: 'refresh' },
     JWT_SECRET,
     {
       expiresIn: JWT_REFRESH_EXPIRES,
       issuer: JWT_ISSUER,
-      subject: payload.userId,
+      subject: userIdStr,
     }
   );
 }
@@ -68,9 +71,9 @@ export function generateRefreshToken(payload: Omit<RefreshTokenPayload, 'type'>)
  * 生成令牌对 (访问令牌 + 刷新令牌)
  */
 export function generateTokenPair(
-  userId: string,
+  userId: number,
   vid: string,
-  email: string,
+  email: string | null,
   sessionId: string
 ): TokenPair {
   const now = new Date();
@@ -93,13 +96,17 @@ export function verifyAccessToken(token: string): AccessTokenPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: JWT_ISSUER,
-    }) as AccessTokenPayload;
-    
+    }) as AccessTokenPayload & { userId: string | number };
+
     if (decoded.type !== 'access') {
       return null;
     }
-    
-    return decoded;
+
+    // Convert userId to number (it's stored as string in JWT)
+    return {
+      ...decoded,
+      userId: typeof decoded.userId === 'string' ? parseInt(decoded.userId, 10) : decoded.userId,
+    };
   } catch (error) {
     return null;
   }
@@ -112,13 +119,17 @@ export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: JWT_ISSUER,
-    }) as RefreshTokenPayload;
-    
+    }) as RefreshTokenPayload & { userId: string | number };
+
     if (decoded.type !== 'refresh') {
       return null;
     }
-    
-    return decoded;
+
+    // Convert userId to number (it's stored as string in JWT)
+    return {
+      ...decoded,
+      userId: typeof decoded.userId === 'string' ? parseInt(decoded.userId, 10) : decoded.userId,
+    };
   } catch (error) {
     return null;
   }
@@ -190,21 +201,21 @@ export function generateSessionToken(): string {
  * 签发令牌对 (兼容别名)
  */
 export function signTokens(payload: {
-  userId: string;
+  userId: number;
   vid: string;
   sessionToken: string;
 }): { accessToken: string; refreshToken: string } {
   const accessToken = generateAccessToken({
     userId: payload.userId,
     vid: payload.vid,
-    email: '',
+    email: null,
     sessionId: payload.sessionToken,
   });
-  
+
   const refreshToken = generateRefreshToken({
     userId: payload.userId,
     sessionId: payload.sessionToken,
   });
-  
+
   return { accessToken, refreshToken };
 }

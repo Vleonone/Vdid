@@ -9,6 +9,7 @@ import { generateVID, generateDID, generateSecureToken } from '../lib/vid-genera
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../lib/password';
 import { generateTokenPair, verifyAccessToken, verifyRefreshToken, generateSessionId, TokenPair } from '../lib/jwt';
 import { calculateTotalVScore, getVScoreLevel } from '../../shared/schema';
+import { emailService } from './email.service';
 
 const { users, sessions, activityLogs, vscoreHistory } = schema;
 
@@ -37,10 +38,10 @@ export interface AuthResult {
 }
 
 export interface SafeUser {
-  id: string;
+  id: number;
   vid: string;
   did: string | null;
-  email: string;
+  email: string | null;
   emailVerified: boolean;
   displayName: string | null;
   avatar: string | null;
@@ -91,7 +92,7 @@ function toSafeUser(user: typeof users.$inferSelect): SafeUser {
  * 记录活动日志
  */
 async function logActivity(
-  userId: string | null,
+  userId: number | null,
   action: string,
   category: string,
   details: Record<string, unknown>,
@@ -205,6 +206,14 @@ export class AuthService {
       'success'
     );
 
+    // 9. 发送邮箱验证邮件
+    await emailService.sendVerificationEmail({
+      to: newUser.email!,
+      displayName: newUser.displayName || '',
+      verifyToken: emailVerifyToken,
+      vid: newUser.vid,
+    });
+
     return {
       success: true,
       user: toSafeUser(newUser),
@@ -240,6 +249,13 @@ export class AuthService {
     }
 
     // 3. 验证密码
+    if (!user.passwordHash) {
+      await logActivity(user.id, 'login', 'auth', {}, ipAddress, userAgent, 'failure', 'No password set');
+      return {
+        success: false,
+        error: 'Invalid email or password',
+      };
+    }
     const isValidPassword = await verifyPassword(password, user.passwordHash);
     if (!isValidPassword) {
       await logActivity(user.id, 'login', 'auth', {}, ipAddress, userAgent, 'failure', 'Invalid password');
@@ -434,7 +450,7 @@ export class AuthService {
   /**
    * 登出所有设备
    */
-  async logoutAll(userId: string): Promise<boolean> {
+  async logoutAll(userId: number): Promise<boolean> {
     try {
       await db.update(sessions)
         .set({ isActive: false })
@@ -448,7 +464,7 @@ export class AuthService {
   /**
    * 获取用户信息
    */
-  async getUser(userId: string): Promise<SafeUser | null> {
+  async getUser(userId: number): Promise<SafeUser | null> {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
     });
@@ -520,13 +536,14 @@ export class AuthService {
   /**
    * 请求密码重置
    */
-  async requestPasswordReset(email: string): Promise<string | null> {
+  async requestPasswordReset(email: string): Promise<boolean> {
     const user = await db.query.users.findFirst({
       where: eq(users.email, email.toLowerCase()),
     });
 
+    // 安全考虑：即使用户不存在也不透露信息
     if (!user) {
-      return null;
+      return true; // 返回 true 以防止邮箱枚举攻击
     }
 
     const resetToken = generateSecureToken(32);
@@ -542,7 +559,14 @@ export class AuthService {
 
     await logActivity(user.id, 'password_reset_request', 'security', {}, undefined, undefined, 'success');
 
-    return resetToken;
+    // 发送密码重置邮件
+    await emailService.sendPasswordResetEmail({
+      to: user.email!,
+      displayName: user.displayName || '',
+      resetToken,
+    });
+
+    return true;
   }
 
   /**

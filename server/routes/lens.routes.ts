@@ -16,14 +16,12 @@ import {
   getUserLensProfiles,
   setPrimaryLensProfile,
   getLensProfiles,
-} from '../services/lens.service.js';
+} from '../services/lens.service';
 
 const router = Router();
 
-// 认证中间件类型
-interface AuthRequest extends Request {
-  user?: { id: string; vid: string };
-}
+// 认证中间件类型 - 使用全局声明的 Express.Request 类型
+type AuthRequest = Request;
 
 // 获取用户链接的 Lens Profiles (需要认证)
 router.get('/profiles', async (req: AuthRequest, res: Response, next: NextFunction) => {

@@ -19,17 +19,16 @@ import {
   getUserWeb3Identities,
   unbindWallet,
   isValidEthereumAddress,
-} from '../services/wallet.service.js';
+} from '../services/wallet.service';
+import { walletRateLimit, strictRateLimit } from '../middleware/rate-limit';
 
 const router = Router();
 
-// 认证中间件类型
-interface AuthRequest extends Request {
-  user?: { id: string; vid: string };
-}
+// 认证中间件类型 - 使用全局声明的 Express.Request 类型
+type AuthRequest = Request;
 
 // 获取 SIWE Nonce
-router.post('/nonce', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/nonce', walletRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { address, chainId = 1 } = req.body;
     
@@ -66,7 +65,7 @@ router.post('/nonce', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 // 验证签名并登录/注册
-router.post('/verify', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/verify', strictRateLimit, walletRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { address, signature, message, chainId = 1, ensName } = req.body;
     
@@ -119,7 +118,7 @@ router.post('/verify', async (req: Request, res: Response, next: NextFunction) =
 });
 
 // 绑定钱包到现有账户 (需要认证)
-router.post('/bind', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/bind', walletRateLimit, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });

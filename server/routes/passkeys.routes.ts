@@ -20,14 +20,12 @@ import {
   getUserPasskeys,
   deletePasskey,
   renamePasskey,
-} from '../services/passkeys.service.js';
+} from '../services/passkeys.service';
 
 const router = Router();
 
-// 认证中间件类型
-interface AuthRequest extends Request {
-  user?: { id: string; vid: string };
-}
+// 认证中间件类型 - 使用全局声明的 Express.Request 类型
+type AuthRequest = Request;
 
 // ============================================
 // 注册流程
@@ -175,8 +173,12 @@ router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction
     }
     
     const { id } = req.params;
-    
-    await deletePasskey(req.user.id, id);
+    const passkeyId = parseInt(id, 10);
+    if (isNaN(passkeyId)) {
+      return res.status(400).json({ error: 'Invalid passkey ID' });
+    }
+
+    await deletePasskey(req.user.id, passkeyId);
     
     res.json({ success: true });
   } catch (error) {
@@ -193,12 +195,17 @@ router.patch('/:id', async (req: AuthRequest, res: Response, next: NextFunction)
     
     const { id } = req.params;
     const { deviceName } = req.body;
-    
+    const passkeyId = parseInt(id, 10);
+
+    if (isNaN(passkeyId)) {
+      return res.status(400).json({ error: 'Invalid passkey ID' });
+    }
+
     if (!deviceName || typeof deviceName !== 'string') {
       return res.status(400).json({ error: 'deviceName is required' });
     }
-    
-    await renamePasskey(req.user.id, id, deviceName);
+
+    await renamePasskey(req.user.id, passkeyId, deviceName);
     
     res.json({ success: true });
   } catch (error) {

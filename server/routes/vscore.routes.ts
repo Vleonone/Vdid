@@ -114,10 +114,10 @@ router.get('/weights', async (req: Request, res: Response) => {
     res.json({
       success: true,
       weights: {
-        activity: { weight: weights.ACTIVITY, description: 'User activity and engagement' },
-        financial: { weight: weights.FINANCIAL, description: 'Transaction history and financial behavior' },
-        social: { weight: weights.SOCIAL, description: 'Social interactions and referrals' },
-        trust: { weight: weights.TRUST, description: 'Identity verification and security' },
+        activity: { weight: weights.activity, description: 'User activity and engagement' },
+        financial: { weight: weights.financial, description: 'Transaction history and financial behavior' },
+        social: { weight: weights.social, description: 'Social interactions and referrals' },
+        trust: { weight: weights.trust, description: 'Identity verification and security' },
       },
     });
   } catch (error) {
