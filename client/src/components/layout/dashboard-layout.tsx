@@ -24,7 +24,7 @@ const navItems = [
   { path: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
