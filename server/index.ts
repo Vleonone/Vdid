@@ -6,6 +6,9 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from 'url';
 
+// Load and validate config first
+import { config, printConfigSummary, isProd } from './config';
+
 // ES Module compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,10 +144,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`__dirname: ${__dirname}`);
+const port = parseInt(config.PORT, 10);
+app.listen(port, () => {
+  printConfigSummary();
+  console.log(`🚀 Server running on port ${port}`);
 });
 
 export default app;

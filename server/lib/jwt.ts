@@ -5,10 +5,11 @@
 
 import jwt from 'jsonwebtoken';
 import { generateSecureToken } from './vid-generator';
+import { config } from '../config';
 
-// JWT 配置
-const JWT_SECRET = process.env.JWT_SECRET || 'vdid-default-secret-change-in-production';
-const JWT_ISSUER = process.env.JWT_ISSUER || 'vdid.io';
+// JWT 配置 (从 config 获取，已验证)
+const JWT_SECRET = config.JWT_SECRET;
+const JWT_ISSUER = config.JWT_ISSUER;
 const JWT_ACCESS_EXPIRES = '15m';  // 访问令牌 15 分钟
 const JWT_REFRESH_EXPIRES = '7d';  // 刷新令牌 7 天
 
