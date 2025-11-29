@@ -9,11 +9,21 @@
  */
 
 import { db } from '../db/index.js';
-import { users, web3Identities, sessions, activityLogs, SUPPORTED_CHAINS } from '@shared/schema.js';
+import { users, web3Identities, sessions, activityLogs } from '../../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { generateVID } from '../lib/vid-generator.js';
 import { signTokens, generateSessionToken } from '../lib/jwt.js';
 import crypto from 'crypto';
+
+// 支持的链配置
+const SUPPORTED_CHAINS: Record<number, { name: string; symbol: string }> = {
+  1: { name: 'Ethereum', symbol: 'ETH' },
+  137: { name: 'Polygon', symbol: 'MATIC' },
+  42161: { name: 'Arbitrum', symbol: 'ETH' },
+  10: { name: 'Optimism', symbol: 'ETH' },
+  8453: { name: 'Base', symbol: 'ETH' },
+  56: { name: 'BNB Chain', symbol: 'BNB' },
+};
 
 // SIWE 消息格式
 interface SIWEMessage {

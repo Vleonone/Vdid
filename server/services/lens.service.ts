@@ -14,7 +14,7 @@
  */
 
 import { db } from '../db/index.js';
-import { users, lensProfiles, activityLogs } from '@shared/schema.js';
+import { users, lensProfiles, activityLogs } from '../../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 
 // Lens Protocol 配置

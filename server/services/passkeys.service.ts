@@ -9,7 +9,7 @@
  */
 
 import { db } from '../db/index.js';
-import { users, passkeys, sessions, activityLogs } from '@shared/schema.js';
+import { users, passkeys, sessions, activityLogs } from '../../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { signTokens, generateSessionToken } from '../lib/jwt.js';
 import crypto from 'crypto';
