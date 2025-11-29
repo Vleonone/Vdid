@@ -45,10 +45,15 @@ export interface SafeUser {
   displayName: string | null;
   avatar: string | null;
   vscoreTotal: number;
+  vscoreActivity: number;
+  vscoreFinancial: number;
+  vscoreSocial: number;
+  vscoreTrust: number;
   vscoreLevel: string;
   twoFactorEnabled: boolean;
   walletAddress: string | null;
   walletVerified: boolean;
+  ensName: string | null;
   createdAt: Date;
 }
 
@@ -69,10 +74,15 @@ function toSafeUser(user: typeof users.$inferSelect): SafeUser {
     displayName: user.displayName,
     avatar: user.avatar,
     vscoreTotal: user.vscoreTotal ?? 0,
+    vscoreActivity: user.vscoreActivity ?? 0,
+    vscoreFinancial: user.vscoreFinancial ?? 0,
+    vscoreSocial: user.vscoreSocial ?? 0,
+    vscoreTrust: user.vscoreTrust ?? 0,
     vscoreLevel: user.vscoreLevel ?? 'Newcomer',
     twoFactorEnabled: user.twoFactorEnabled ?? false,
     walletAddress: user.walletAddress,
     walletVerified: user.walletVerified ?? false,
+    ensName: user.ensName,
     createdAt: user.createdAt,
   };
 }

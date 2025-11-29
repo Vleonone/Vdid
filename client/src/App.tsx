@@ -9,6 +9,7 @@ import Register from "@/pages/auth/register";
 import DashboardOverview from "@/pages/dashboard/overview";
 import DashboardSecurity from "@/pages/dashboard/security";
 import DashboardApps from "@/pages/dashboard/apps";
+import DashboardSettings from "@/pages/dashboard/settings";
 import Authorize from "@/pages/oauth/authorize";
 import Docs from "@/pages/docs";
 
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/dashboard" component={DashboardOverview} />
       <Route path="/dashboard/security" component={DashboardSecurity} />
       <Route path="/dashboard/apps" component={DashboardApps} />
+      <Route path="/dashboard/settings" component={DashboardSettings} />
       
       <Route component={NotFound} />
     </Switch>

@@ -12,13 +12,13 @@ import { useState, useEffect } from "react";
 interface UserData {
   vid: string;
   email: string;
-  vscore: {
-    total: number;
-    activity: number;
-    trust: number;
-    social: number;
-    ecosystem: number;
-  };
+  displayName?: string;
+  vscoreTotal: number;
+  vscoreActivity: number;
+  vscoreTrust: number;
+  vscoreSocial: number;
+  vscoreFinancial: number;
+  vscoreLevel: string;
   walletAddress?: string;
   ensName?: string;
   createdAt: string;
@@ -36,15 +36,22 @@ export default function DashboardOverview() {
   const fetchUserData = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found');
+        return;
+      }
+      
       const response = await fetch('/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.success) {
-        setUser(data.data);
+      console.log('User data response:', data);
+      
+      if (data.success && data.user) {
+        setUser(data.user);
       }
     } catch (err) {
-      console.error('Failed to fetch user data');
+      console.error('Failed to fetch user data:', err);
     }
   };
 
@@ -63,7 +70,9 @@ export default function DashboardOverview() {
     return { label: 'Beginner', color: 'text-gray-400' };
   };
 
-  const scoreLevel = getScoreLevel(user?.vscore?.total || 0);
+  const scoreLevel = user?.vscoreLevel 
+    ? { label: user.vscoreLevel, color: user.vscoreLevel === 'Elite' ? 'text-purple-400' : 'text-primary' }
+    : getScoreLevel(user?.vscoreTotal || 0);
 
   return (
     <DashboardLayout>
@@ -127,7 +136,7 @@ export default function DashboardOverview() {
           <StatCard 
             icon={<Activity className="w-5 h-5 text-primary" />}
             title="V-Score"
-            value={user?.vscore?.total?.toString() || '0'}
+            value={user?.vscoreTotal?.toString() || '0'}
             subtitle={scoreLevel.label}
             subtitleColor={scoreLevel.color}
           />
@@ -167,25 +176,25 @@ export default function DashboardOverview() {
             <CardContent className="space-y-4">
               <ScoreBar 
                 label="Activity" 
-                value={user?.vscore?.activity || 0} 
+                value={user?.vscoreActivity || 0} 
                 max={300} 
                 color="bg-primary" 
               />
               <ScoreBar 
                 label="Trust" 
-                value={user?.vscore?.trust || 0} 
+                value={user?.vscoreTrust || 0} 
                 max={200} 
                 color="bg-green-500" 
               />
               <ScoreBar 
                 label="Social" 
-                value={user?.vscore?.social || 0} 
+                value={user?.vscoreSocial || 0} 
                 max={200} 
                 color="bg-blue-500" 
               />
               <ScoreBar 
-                label="Ecosystem" 
-                value={user?.vscore?.ecosystem || 0} 
+                label="Financial" 
+                value={user?.vscoreFinancial || 0} 
                 max={300} 
                 color="bg-purple-500" 
               />
