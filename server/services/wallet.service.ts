@@ -227,9 +227,10 @@ export async function walletAuth(params: {
     await db.insert(web3Identities)
       .values({
         userId: user.id,
+        walletAddress: normalizedAddress,
+        address: normalizedAddress,
         chainId: params.chainId,
         chainName: SUPPORTED_CHAINS[params.chainId as keyof typeof SUPPORTED_CHAINS]?.name || 'Unknown',
-        address: normalizedAddress,
         addressChecksum: normalizedAddress,
         isVerified: true,
         verifiedAt: new Date(),
@@ -366,9 +367,10 @@ export async function bindWallet(params: {
   await db.insert(web3Identities)
     .values({
       userId: params.userId,
+      walletAddress: normalizedAddress,
+      address: normalizedAddress,
       chainId: params.chainId,
       chainName: SUPPORTED_CHAINS[params.chainId as keyof typeof SUPPORTED_CHAINS]?.name || 'Unknown',
-      address: normalizedAddress,
       addressChecksum: normalizedAddress,
       isVerified: true,
       verifiedAt: new Date(),

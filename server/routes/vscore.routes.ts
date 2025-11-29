@@ -227,7 +227,7 @@ router.get('/summary', async (req: Request, res: Response) => {
     // 计算过去7天的变化
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentChanges = history.filter(h => h.createdAt > weekAgo);
-    const weeklyChange = recentChanges.reduce((sum, h) => sum + h.change, 0);
+    const weeklyChange = recentChanges.reduce((sum, h) => sum + (h.change ?? 0), 0);
 
     res.json({
       success: true,

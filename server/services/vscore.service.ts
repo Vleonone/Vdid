@@ -52,9 +52,9 @@ export interface VScoreInfo {
 
 export interface VScoreHistoryItem {
   id: number;
-  previousTotal: number;
-  newTotal: number;
-  change: number;
+  previousTotal: number | null;
+  newTotal: number | null;
+  change: number | null;
   reason: string | null;
   createdAt: Date;
   levelChanged: boolean;
