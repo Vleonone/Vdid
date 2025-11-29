@@ -279,12 +279,12 @@ export async function walletAuth(params: {
     sessionToken,
   });
   
-  // 创建 session
+  // 创建 session (使用 sessionToken 作为唯一标识)
   await db.insert(sessions)
     .values({
       userId: user.id,
       token: sessionToken,
-      refreshToken: tokens.refreshToken.slice(0, 64),
+      refreshToken: sessionToken, // 使用唯一的 sessionToken
       refreshTokenExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,

@@ -247,7 +247,7 @@ export class AuthService {
     await db.insert(sessions).values({
       userId: user.id,
       token: sessionId,
-      refreshToken: tokens.refreshToken.substring(0, 64),
+      refreshToken: sessionId, // 使用唯一的 sessionId
       refreshTokenExpires: tokens.refreshTokenExpires,
       userAgent,
       ipAddress,
@@ -393,7 +393,7 @@ export class AuthService {
     await db.update(sessions)
       .set({
         token: newSessionId,
-        refreshToken: tokens.refreshToken.substring(0, 64),
+        refreshToken: newSessionId, // 使用唯一的 sessionId
         refreshTokenExpires: tokens.refreshTokenExpires,
         expiresAt: tokens.accessTokenExpires,
         lastActivityAt: new Date(),

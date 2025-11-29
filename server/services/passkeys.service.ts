@@ -312,7 +312,7 @@ export async function verifyAuthentication(params: {
     .values({
       userId: user.id,
       token: sessionToken,
-      refreshToken: tokens.refreshToken.slice(0, 64),
+      refreshToken: sessionToken, // 使用唯一的 sessionToken
       refreshTokenExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,

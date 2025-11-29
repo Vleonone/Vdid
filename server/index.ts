@@ -59,6 +59,9 @@ if (NODE_ENV !== 'production') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Trust proxy (Railway 等反向代理环境)
+app.set('trust proxy', 1);
+
 // 速率限制 (开发阶段放宽)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 分钟
