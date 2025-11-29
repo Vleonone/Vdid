@@ -168,3 +168,18 @@ export function getVScoreLevel(score: number): string {
   if (score >= 200) return 'Active';
   return 'Newcomer';
 }
+// V-Score constants
+export const VSCORE_WEIGHTS = {
+  activity: 0.30,
+  financial: 0.35,
+  social: 0.20,
+  trust: 0.15
+};
+
+export const VSCORE_LEVELS = {
+  ELITE: { min: 800, label: 'Elite' },
+  TRUSTED: { min: 600, label: 'Trusted' },
+  ESTABLISHED: { min: 400, label: 'Established' },
+  ACTIVE: { min: 200, label: 'Active' },
+  NEWCOMER: { min: 0, label: 'Newcomer' }
+};
