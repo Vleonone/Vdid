@@ -12,6 +12,9 @@ import { config, printConfigSummary, isProd } from './config';
 // Rate limiting
 import { globalRateLimit } from './middleware/rate-limit';
 
+// Error handling
+import { errorHandler, notFoundHandler, requestIdMiddleware } from './middleware/error-handler';
+
 // ES Module compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +70,9 @@ app.use(cors({
   credentials: true,
 }));
 
+// Request ID for tracking
+app.use(requestIdMiddleware);
+
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -82,9 +88,51 @@ app.use("/api/wallets", multiWalletRoutes);
 app.use("/api/passkeys", passkeyRoutes);
 app.use("/api/vscore", vscoreRoutes);
 
-// Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+// Health check with detailed status
+app.get("/api/health", async (req, res) => {
+  const startTime = Date.now();
+
+  // Check database connection
+  let dbStatus = 'unknown';
+  let dbLatency = 0;
+  try {
+    const dbStart = Date.now();
+    // Simple query to check DB connection
+    const { db } = await import('./db');
+    const { sql } = await import('drizzle-orm');
+    await db.execute(sql`SELECT 1`);
+    dbLatency = Date.now() - dbStart;
+    dbStatus = 'connected';
+  } catch (error) {
+    dbStatus = 'disconnected';
+    console.error('Health check - DB error:', error);
+  }
+
+  const health = {
+    status: dbStatus === 'connected' ? 'healthy' : 'degraded',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: process.env.npm_package_version || '1.0.0',
+    environment: config.NODE_ENV,
+    services: {
+      database: {
+        status: dbStatus,
+        latencyMs: dbLatency,
+      },
+      api: {
+        status: 'operational',
+        latencyMs: Date.now() - startTime,
+      },
+    },
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      unit: 'MB',
+    },
+  };
+
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // Serve static files in production
@@ -141,13 +189,11 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error("Error:", err);
-  res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
-  });
-});
+// 404 handler for API routes
+app.use('/api/*', notFoundHandler);
+
+// Global error handling middleware
+app.use(errorHandler);
 
 // Start server
 const port = parseInt(config.PORT, 10);
