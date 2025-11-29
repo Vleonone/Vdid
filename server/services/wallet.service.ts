@@ -12,6 +12,7 @@ import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { generateVID } from '../lib/vid-generator';
 import { signTokens, generateSessionToken } from '../lib/jwt';
+import { ethers } from 'ethers';
 import crypto from 'crypto';
 
 const { users, web3Identities, sessions, activityLogs } = schema;
@@ -77,8 +78,12 @@ export function isValidEthereumAddress(address: string): boolean {
 
 // 规范化地址 (checksum)
 export function checksumAddress(address: string): string {
-  // 简化的 checksum 实现，生产环境应使用 ethers.js 或 viem
-  return address.toLowerCase();
+  try {
+    return ethers.getAddress(address);
+  } catch {
+    // 如果地址无效，返回小写版本
+    return address.toLowerCase();
+  }
 }
 
 // 获取或创建 SIWE Nonce
@@ -113,23 +118,38 @@ export async function verifySIWESignature(params: {
   signature: string;
   address: string;
 }): Promise<boolean> {
-  // 注意：这是简化实现
-  // 生产环境应使用 ethers.js 或 viem 的 verifyMessage 函数
-  // 目前仅验证签名格式
-  
-  if (!params.signature || !params.signature.startsWith('0x')) {
+  try {
+    // 基础格式验证
+    if (!params.signature || !params.signature.startsWith('0x')) {
+      console.error('SIWE: Invalid signature format - missing 0x prefix');
+      return false;
+    }
+
+    if (params.signature.length !== 132) { // 0x + 130 hex chars
+      console.error('SIWE: Invalid signature length');
+      return false;
+    }
+
+    if (!params.message || params.message.length === 0) {
+      console.error('SIWE: Empty message');
+      return false;
+    }
+
+    // 使用 ethers.js 恢复签名者地址
+    const recoveredAddress = ethers.verifyMessage(params.message, params.signature);
+
+    // 比较恢复的地址与声明的地址（不区分大小写）
+    const isValid = recoveredAddress.toLowerCase() === params.address.toLowerCase();
+
+    if (!isValid) {
+      console.error(`SIWE: Address mismatch - expected ${params.address}, recovered ${recoveredAddress}`);
+    }
+
+    return isValid;
+  } catch (error) {
+    console.error('SIWE signature verification failed:', error);
     return false;
   }
-  
-  if (params.signature.length !== 132) { // 0x + 130 hex chars
-    return false;
-  }
-  
-  // TODO: 实际签名验证
-  // const recoveredAddress = ethers.verifyMessage(params.message, params.signature);
-  // return recoveredAddress.toLowerCase() === params.address.toLowerCase();
-  
-  return true; // 暂时返回 true，前端会做实际验证
 }
 
 // 钱包登录/注册
