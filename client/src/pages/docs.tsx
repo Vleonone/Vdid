@@ -1,1344 +1,941 @@
-import { useState, useMemo } from "react";
-import { Link } from "wouter";
-import { Shield, Search, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
-import { Input } from "@/components/ui/input";
-
-const FULL_TECHNICAL_CONTENT = `# VDID Technical Whitepaper
-## Developer Documentation & Protocol Specification
-
-**Version 1.0 | November 2025**
-**vdid.io | docs.vdid.io**
-
----
-
-## Table of Contents
-
-1. Introduction
-2. Architecture Overview
-3. DID Specification
-4. Smart Contracts
-5. Verifiable Credentials
-6. V-Score System
-7. Privacy & Cryptography
-8. SDK Reference
-9. API Reference
-10. Integration Guide
-11. Security Model
-12. Appendix
-
----
-
-# Chapter 1: Introduction
-
-## 1.1 Purpose of This Document
-
-This technical whitepaper provides comprehensive documentation for developers integrating with the VDID (Velon Decentralized Identity) protocol. It covers:
-
-- Protocol architecture and design decisions
-- DID method specification (did:vdid)
-- Smart contract interfaces and ABIs
-- Verifiable credentials implementation
-- V-Score calculation methodology
-- Privacy-preserving features (ZKP)
-- SDK and API references
-- Security considerations
-
-## 1.2 Target Audience
-
-This document is intended for:
-
-- **Smart Contract Developers** building on VDID
-- **Backend Engineers** integrating VDID authentication
-- **Frontend Developers** implementing VDID login flows
-- **Security Auditors** reviewing VDID implementations
-- **Protocol Researchers** studying decentralized identity
-
-## 1.3 Prerequisites
-
-Readers should be familiar with:
-
-- Ethereum/EVM smart contract development
-- Cryptographic primitives (ECDSA, hashing)
-- W3C DID and Verifiable Credentials standards
-- RESTful API design
-- JavaScript/TypeScript (for SDK examples)
-
----
-
-# Chapter 2: Architecture Overview
-
-## 2.1 System Architecture
-
-VDID operates as a four-layer architecture:
-
-**APPLICATION LAYER** - Velgoo, DApps, and third-party integrations
-**SERVICE LAYER** - SDK, REST API Gateway, Resolver Service
-**PROTOCOL LAYER** - DID Registry, Credential Vault, V-Score Engine, Privacy Layer
-**BLOCKCHAIN LAYER** - BASE (Primary), Ethereum, Polygon, Arbitrum
-
-## 2.2 Component Overview
-
-### 2.2.1 DID Registry
-The core smart contract managing DID creation, updates, and resolution.
-
-| Function | Description |
-|----------|-------------|
-| \`createDID()\` | Creates a new VDID |
-| \`updateDID()\` | Updates DID document |
-| \`resolveDID()\` | Returns DID document |
-| \`deactivateDID()\` | Deactivates a DID |
-| \`transferController()\` | Changes DID controller |
-
-### 2.2.2 Credential Vault
-Manages verifiable credentials issuance, storage, and verification.
-
-| Function | Description |
-|----------|-------------|
-| \`issueCredential()\` | Issues new credential |
-| \`verifyCredential()\` | Verifies credential signature |
-| \`revokeCredential()\` | Revokes issued credential |
-| \`getCredentials()\` | Lists user credentials |
-
-### 2.2.3 V-Score Engine
-Calculates and maintains behavioral reputation scores.
-
-| Function | Description |
-|----------|-------------|
-| \`calculateScore()\` | Computes V-Score |
-| \`getScore()\` | Returns current V-Score |
-| \`updateFactors()\` | Updates score factors |
-| \`getHistory()\` | Returns score history |
-
-## 2.3 Design Principles
-
-### 2.3.1 User Sovereignty
-- Users control their private keys
-- No centralized key custody
-- Self-custodial by default
-
-### 2.3.2 Privacy by Design
-- Minimal on-chain data
-- Off-chain encrypted storage
-- Zero-knowledge proofs for verification
-
-### 2.3.3 Interoperability
-- W3C DID Core compliance
-- W3C Verifiable Credentials support
-- EIP-712 typed data signing
-
-### 2.3.4 Progressive Decentralization
-- Phase 1: Hybrid (some centralized services)
-- Phase 2: Federated (multiple operators)
-- Phase 3: Fully decentralized (DAO governed)
-
-## 2.4 Technology Stack
-
-| Layer | Technology |
-|-------|------------|
-| Primary Chain | BASE (Ethereum L2) |
-| Smart Contracts | Solidity 0.8.x |
-| Storage | IPFS + Ceramic |
-| Indexing | The Graph |
-| SDK | TypeScript |
-| API | REST + GraphQL |
-| Cryptography | secp256k1, BLS12-381 |
-| ZKP | Circom + snarkjs |
-
----
-
-# Chapter 3: DID Specification
-
-## 3.1 DID Method: did:vdid
-
-VDID implements the W3C DID Core specification with the \`did:vdid\` method.
-
-### 3.1.1 DID Syntax
-
-\`\`\`
-did:vdid:<network>:<identifier>
-
-Examples:
-- did:vdid:base:0x8a7b3c4d5e6f7890abcdef1234567890abcdef12
-- did:vdid:ethereum:0x8a7b3c4d5e6f7890abcdef1234567890abcdef12
-- did:vdid:polygon:0x8a7b3c4d5e6f7890abcdef1234567890abcdef12
-\`\`\`
-
-### 3.1.2 Network Identifiers
-
-| Network | Identifier | Chain ID |
-|---------|------------|----------|
-| BASE Mainnet | \`base\` | 8453 |
-| Ethereum Mainnet | \`ethereum\` | 1 |
-| Polygon Mainnet | \`polygon\` | 137 |
-| Arbitrum One | \`arbitrum\` | 42161 |
-
-## 3.2 DID Document Structure
-
-Every VDID has an associated DID Document following W3C standards containing:
-- Verification methods (public keys)
-- Authentication endpoints
-- Service endpoints
-- V-Score and credential information
-- Cross-chain addresses
-
-## 3.3 DID Operations
-
-### 3.3.1 Create (Register)
-\`\`\`typescript
-import { VDID } from '@vdid/sdk';
-const vdid = new VDID({ network: 'base' });
-const identity = await vdid.create();
-console.log(identity.did);
-// did:vdid:base:0x8a7b3c4d5e6f7890abcdef1234567890abcdef12
-\`\`\`
-
-### 3.3.2 Resolve (Read)
-\`\`\`typescript
-const document = await vdid.resolve('did:vdid:base:0x8a7b...');
-console.log(document.verificationMethod);
-console.log(document['vdid:vscore']);
-\`\`\`
-
-### 3.3.3 Update
-\`\`\`typescript
-await vdid.update({
-  did: 'did:vdid:base:0x8a7b...',
-  updates: {
-    service: [{
-      id: '#new-service',
-      type: 'LinkedDomains',
-      serviceEndpoint: 'https://example.com'
-    }]
-  },
-  signer: wallet
-});
-\`\`\`
-
-## 3.4 Key Derivation
-
-### 3.4.1 BIP-44 Derivation Path
-
-VDID uses BIP-44 compliant key derivation:
-
-\`\`\`
-m / purpose' / coin_type' / account' / change / address_index
-
-VDID paths:
-- Ethereum/BASE/L2: m/44'/60'/0'/0/0
-- Solana (future): m/44'/501'/0'/0'
-\`\`\`
-
-### 3.4.2 Multi-Chain Key Generation
-
-\`\`\`typescript
-import { VDID } from '@vdid/sdk';
-import { HDKey } from '@vdid/crypto';
-
-const mnemonic = 'abandon abandon abandon ... about';
-const hdKey = HDKey.fromMnemonic(mnemonic);
-
-const keys = {
-  ethereum: hdKey.derive("m/44'/60'/0'/0/0"),
-  base: hdKey.derive("m/44'/60'/0'/0/0"),
-  polygon: hdKey.derive("m/44'/60'/0'/0/0")
-};
-\`\`\`
-
----
-
-# Chapter 4: Smart Contracts
-
-## 4.1 Contract Architecture
-
-VDID uses upgradeable smart contracts through TransparentUpgradeableProxy pattern:
-
-- **VDIDRegistry**: Core DID management (createDID, updateDID, resolveDID, deactivateDID)
-- **VDIDCredentials**: Credential issuance and verification (issue, verify, revoke, list)
-- **VDIDVScore**: Behavioral score calculation (calculate, update, query)
-- **VDIDStorage**: Shared storage layer
-
-## 4.2 Contract Interfaces
-
-### VDIDRegistry Interface
-
-\`\`\`solidity
-interface IVDIDRegistry {
-  function createDID(
-    bytes calldata publicKey,
-    string calldata initialDocument
-  ) external returns (bytes32 didIdentifier);
-  
-  function updateDID(
-    bytes32 didIdentifier,
-    string calldata newDocument,
-    bytes calldata signature
-  ) external;
-  
-  function resolveDID(
-    bytes32 didIdentifier
-  ) external view returns (string memory document);
-  
-  function deactivateDID(
-    bytes32 didIdentifier,
-    bytes calldata signature
-  ) external;
-}
-\`\`\`
-
-### VDIDCredentials Interface
-
-\`\`\`solidity
-interface IVDIDCredentials {
-  function issueCredential(
-    bytes32 subject,
-    bytes32 credentialType,
-    bytes calldata credentialData,
-    uint256 expiresAt
-  ) external returns (bytes32 credentialId);
-  
-  function verifyCredential(
-    bytes32 credentialId,
-    bytes calldata proof
-  ) external view returns (bool valid);
-  
-  function revokeCredential(
-    bytes32 credentialId
-  ) external;
-}
-\`\`\`
-
----
-
-# Chapter 5: Verifiable Credentials
-
-## 5.1 Credential Types
-
-### 5.1.1 Standard Credential Types
-
-| Type | Description | Issuer |
-|------|-------------|--------|
-| \`ProofOfHumanity\` | Proves user is human | Approved verifier |
-| \`KYCVerified\` | KYC completion proof | Licensed KYC provider |
-| \`AgeVerification\` | Age threshold proof | ID verifier |
-| \`EducationCredential\` | Education verification | Institution |
-| \`DeFiReputation\` | DeFi protocol reputation | DeFi protocol |
-
-## 5.2 Credential Structure
-
-VDID uses W3C Verifiable Credential format with:
-- Issuer information (DID and name)
-- Subject identifier
-- Credential claims
-- Issuance and expiration dates
-- Cryptographic proof (signature)
-- Revocation status
-
-## 5.3 Credential Operations
-
-### 5.3.1 Issue Credential
-\`\`\`typescript
-const credential = await vdid.credentials.issue({
-  subject: 'did:vdid:base:0xSubject...',
-  type: 'ProofOfHumanity',
-  claims: {
-    humanityVerified: true,
-    verificationMethod: 'biometric'
-  },
-  expiresAt: new Date('2026-11-26').toISOString(),
-  signer: issuerWallet
-});
-\`\`\`
-
-### 5.3.2 Verify Credential
-\`\`\`typescript
-const result = await vdid.credentials.verify(credentialId);
-console.log({
-  valid: result.valid,
-  checks: {
-    signature: true,
-    notExpired: true,
-    notRevoked: true,
-    issuerActive: true
-  }
-});
-\`\`\`
-
----
-
-# Chapter 6: V-Score System
-
-## 6.1 Overview
-
-V-Score is VDID's portable reputation system aggregating on-chain behavior:
-
-**Total Score: 0-1000**
-- Activity Score (30%): 0-300 points
-- Financial Score (35%): 0-350 points
-- Social Score (20%): 0-200 points
-- Trust Score (15%): 0-150 points
-
-## 6.2 Score Components
-
-### 6.2.1 Activity Score (30%)
-
-Measures on-chain interaction patterns:
-- Transaction count and frequency
-- Protocol diversity
-- Consistent activity over time
-- Transaction volume (log scale)
-- Recent activity bonus
-
-### 6.2.2 Financial Score (35%)
-
-Evaluates financial responsibility:
-- Loan repayment history (on-time)
-- Collateral health and ratios
-- Asset stability and diversification
-- No/few liquidations
-- Healthy credit utilization
-
-### 6.2.3 Social Score (20%)
-
-Assesses community participation:
-- DAO participation and voting
-- Forum contributions and proposals
-- Peer endorsements/attestations
-- Verified social connections
-
-### 6.2.4 Trust Score (15%)
-
-Reflects account credibility:
-- Account age (time since DID creation)
-- Verification level (KYC/credentials)
-- Security practices (2FA, key rotation)
-- No security incidents
-
-## 6.3 Score Levels
-
-| Range | Level | Description |
-|-------|-------|-------------|
-| 0-199 | Newcomer | New or minimal activity |
-| 200-399 | Active | Regular participant |
-| 400-599 | Established | Consistent positive history |
-| 600-799 | Trusted | Strong reputation |
-| 800-1000 | Elite | Exceptional track record |
-
-## 6.4 V-Score API
-
-### 6.4.1 Get V-Score
-\`\`\`typescript
-const score = await vdid.vscore.get('did:vdid:base:0x...');
-console.log({
-  current: 720,
-  level: 'Trusted',
-  components: {
-    activity: 245,
-    financial: 280,
-    social: 120,
-    trust: 110
-  },
-  percentile: 85
-});
-\`\`\`
-
-### 6.4.2 Verify V-Score Threshold
-\`\`\`typescript
-const meets = await vdid.vscore.verify({
-  did: 'did:vdid:base:0x...',
-  minScore: 500
-});
-// Returns proof without revealing exact score
-\`\`\`
-
----
-
-# Chapter 7: Privacy & Cryptography
-
-## 7.1 Cryptographic Primitives
-
-### 7.1.1 Key Types
-
-| Algorithm | Use Case | Standard |
-|-----------|----------|----------|
-| secp256k1 | Primary signing | Bitcoin/Ethereum |
-| Ed25519 | High-performance signing | SSH, Signal |
-| X25519 | Key agreement (ECDH) | TLS, Signal |
-| BLS12-381 | Threshold signatures | Ethereum 2.0 |
-| Poseidon | ZK-friendly hashing | Circom |
-
-## 7.2 Privacy Features
-
-### 7.2.1 Zero-Knowledge Proofs
-
-Prove attributes without revealing underlying data:
-
-| Want to Prove | What's Revealed | What Stays Private |
-|---------------|-----------------|-------------------|
-| Age ≥ 18 | "Yes, over 18" | Actual birthdate |
-| V-Score ≥ 500 | "Yes, qualifies" | Exact score |
-| KYC completed | "Yes, verified" | Personal documents |
-
-### 7.2.2 Selective Disclosure
-
-Users can selectively share credentials:
-- Reveal specific claims
-- Derive new claims without revealing source
-- Generate ZK proofs for conditions
-- Never reveal unnecessary information
-
-## 7.3 Security Model
-
-### 7.3.1 Threat Model and Mitigations
-
-| Threat | Mitigation |
-|--------|-----------|
-| Private key compromise | MPC key storage, hardware wallets |
-| Credential forgery | Cryptographic signatures |
-| Sybil attacks | V-Score requirement, proof-of-humanity |
-| Data breach | Encryption, selective disclosure |
-
-### 7.3.2 Smart Contract Security
-
-- Upgradeable contracts with time locks
-- Multi-sig admin controls
-- Formal verification for critical functions
-- Third-party audits
-
----
-
-# Chapter 8: SDK Reference
-
-## 8.1 Installation
-
-\`\`\`bash
-npm install @vdid/sdk
-\`\`\`
-
-## 8.2 Initialization
-
-\`\`\`typescript
-import { VDID } from '@vdid/sdk';
-
-const vdid = new VDID({
-  network: 'base',
-  rpcUrl: 'https://mainnet.base.org',
-  resolverUrl: 'https://resolver.vdid.io'
-});
-\`\`\`
-
-## 8.3 Core Methods
-
-### Identity Management
-- \`vdid.create()\` - Create new DID
-- \`vdid.resolve(did)\` - Resolve DID document
-- \`vdid.update(did, updates)\` - Update DID
-- \`vdid.deactivate(did)\` - Deactivate DID
-
-### Credentials
-- \`vdid.credentials.issue(subject, type, claims)\` - Issue credential
-- \`vdid.credentials.verify(id)\` - Verify credential
-- \`vdid.credentials.list(did)\` - List credentials
-- \`vdid.credentials.revoke(id)\` - Revoke credential
-
-### V-Score
-- \`vdid.vscore.get(did)\` - Get current V-Score
-- \`vdid.vscore.verify(did, minScore)\` - Verify score threshold
-- \`vdid.vscore.history(did, from, to)\` - Get score history
-
----
-
-# Chapter 9: API Reference
-
-## 9.1 REST API Endpoints
-
-### Create DID
-\`\`\`
-POST /v1/identities/create
-{
-  "publicKey": "0x...",
-  "network": "base"
-}
-\`\`\`
-
-### Resolve DID
-\`\`\`
-GET /v1/identities/{did}
-\`\`\`
-
-### Get V-Score
-\`\`\`
-GET /v1/identities/{did}/vscore
-\`\`\`
-
-### Issue Credential
-\`\`\`
-POST /v1/credentials/issue
-{
-  "subject": "did:vdid:base:0x...",
-  "type": "ProofOfHumanity",
-  "claims": { ... }
-}
-\`\`\`
-
----
-
-# Chapter 10: Integration Guide
-
-## 10.1 For DApps
-
-### Step 1: Install SDK
-\`\`\`bash
-npm install @vdid/sdk
-\`\`\`
-
-### Step 2: Initialize
-\`\`\`typescript
-const vdid = new VDID({ network: 'base' });
-\`\`\`
-
-### Step 3: Authenticate Users
-\`\`\`typescript
-const auth = await vdid.authenticate({
-  message: 'Sign to authenticate',
-  signer: window.ethereum
-});
-\`\`\`
-
-## 10.2 For Protocols
-
-### Reputation-Based Access
-\`\`\`typescript
-const qualifies = await vdid.verify({
-  did: userDID,
-  requirements: {
-    minVScore: 500,
-    credentials: ['kyc-verified']
-  }
-});
-
-if (qualifies.valid) {
-  enablePremiumFeatures(user);
-}
-\`\`\`
-
----
-
-# Chapter 11: Security Model
-
-## 11.1 Security Principles
-
-1. **User Sovereignty** - Users maintain control of private keys
-2. **Minimal Trust** - Cryptographic verification preferred over trust
-3. **Defense in Depth** - Multiple security layers
-4. **Transparency** - Open, auditable implementation
-
-## 11.2 Best Practices
-
-- Always verify signatures before accepting claims
-- Use hardware wallets for high-value operations
-- Rotate keys regularly
-- Monitor account activity
-- Enable 2FA where available
-- Keep recovery phrases secure and offline
-
----
-
-# Chapter 12: Appendix
-
-## A. Glossary
-
-- **DID**: Decentralized Identifier - globally unique, user-controlled identifier
-- **DID Document**: Machine-readable document containing DID metadata
-- **Credential**: Verifiable claim issued by one party about another
-- **V-Score**: Portable reputation score aggregating on-chain behavior
-- **ZKP**: Zero-Knowledge Proof - cryptographic proof without revealing underlying data
-- **EVM**: Ethereum Virtual Machine
-- **Smart Contract**: Self-executing code on blockchain
-
-## B. Related Standards
-
-- W3C DID Core: https://www.w3.org/TR/did-core/
-- W3C Verifiable Credentials: https://www.w3.org/TR/vc-data-model/
-- BIP-32/44: Hierarchical Deterministic Wallets
-- EIP-712: Typed structured data signing
-
-## C. Resources
-
-- VDID Documentation: https://docs.vdid.io
-- GitHub Repository: https://github.com/velon-network/vdid
-- Community Discord: https://discord.gg/velon
-- Security Contact: security@vdid.io`;
-
-const FULL_PUBLIC_CONTENT = `# VDID Public Whitepaper
-## The Identity Protocol for Web3
-
-**Version 1.0 | November 2025**
-**vdid.io**
-
----
-
-# Executive Summary
-
-## The Identity Problem in Web3
-
-Web3 promised ownership and sovereignty. Yet the average crypto user manages **4.7 separate wallets**, repeats **KYC processes 12+ times** across platforms, and has **no portable reputation** that follows them across the ecosystem.
-
-Despite blockchain's transparency, users remain fragmented digital identities, starting from zero with every new application.
-
-**VDID changes this.**
-
-VDID (Velon Decentralized Identity) is a unified identity protocol that transforms how users exist in Web3. By combining W3C DID standards with behavioral intelligence and cross-chain interoperability, VDID creates a single, portable, user-controlled identity layer that works across all applications, chains, and services.
-
-## What VDID Offers
-
-**For Users**: Own your identity. One login for all of Web3. Your reputation follows you everywhere.
-
-**For Developers**: Integrate identity in minutes. Access verified users. Build on trust, not assumptions.
-
-**For Applications**: Reduce fraud, streamline onboarding, unlock personalization—all while respecting user privacy.
-
-## The VDID Difference
-
-| Feature | Traditional Web3 | VDID |
-|---------|-----------------|------|
-| Identity | Per-wallet, fragmented | Unified across all chains |
-| Reputation | Non-portable, starts at zero | Portable V-Score follows you |
-| KYC | Repeat on every platform | Verify once, use everywhere |
-| Privacy | All or nothing | Selective disclosure with ZKP |
-| Data Ownership | Platforms own your data | You own and control your data |
-
----
-
-# Chapter 1: Introduction
-
-## 1.1 The Vision
-
-> *"Your identity should work as seamlessly in Web3 as it does in the physical world."*
-
-When you walk into a bank, a store, or a friend's home, your identity travels with you. Your reputation precedes you. People recognize who you are without requiring proof from scratch each time.
-
-Web3 promised this same experience digitally. Blockchain was supposed to enable portable, sovereign identity. Instead, we got fragmentation, repetition, and anonymity.
-
-VDID exists to fulfill Web3's original promise—building the identity layer that makes users more powerful, applications more useful, and the entire ecosystem more trustworthy.
-
-## 1.2 The Mission
-
-**To become the standard identity infrastructure for Web3, enabling seamless, secure, and user-controlled identity across all applications and chains.**
-
-## 1.3 Core Principles
-
-### User Sovereignty
-Users own their identity. No company, government, or protocol can revoke, modify, or access a user's VDID without explicit consent.
-
-### Privacy by Design
-Built on minimal disclosure. Users can prove attributes without revealing underlying data through zero-knowledge proofs.
-
-### Interoperability First
-Built on W3C DID standards, compatible with major blockchains, designed for both Web3 and traditional systems.
-
-### Progressive Decentralization
-Starting with pragmatic UX, progressively decentralizing as the protocol matures.
-
-## 1.4 Position in the Velon Ecosystem
-
-VDID operates as the **Identity Layer** within the Velon ecosystem, deeply integrated with:
-- **Velgoo**: Wallet Layer
-- **RTPX**: Behavior Value Layer
-
-While integrated with Velon, VDID is designed as an **open protocol** that any Web3 application can integrate.
-
----
-
-# Chapter 2: The Problem
-
-## 2.1 Wallet Fragmentation
-
-**The average crypto user manages 4.7 different wallets.**
-
-Each wallet is a separate identity:
-- Multiple seed phrases to remember
-- Assets scattered across wallets
-- Separate security practices for each
-- Reputation starts at zero in each ecosystem
-
-## 2.2 Repetitive KYC
-
-**Users complete KYC verification 12+ times on average.**
-
-Each exchange, DeFi protocol, and Web3 service demands fresh verification:
-- Same documents submitted repeatedly
-- Multiple companies storing copies of sensitive data
-- User friction at every new platform
-- Privacy risks multiplied
-
-## 2.3 Non-Portable Reputation
-
-**Your history on one platform means nothing on another.**
-
-A user with 5 years of perfect payment history on one lending protocol has zero reputation when joining another. Traders with verified track records start anonymous on new DEXs.
-
-## 2.4 Sybil Vulnerability
-
-**Without verified identity, applications cannot distinguish humans from bots.**
-
-- Airdrops captured by farmers
-- Governance manipulated by sock puppets
-- Community initiatives gamed by bad actors
-- Honest users disadvantaged
-
----
-
-# Chapter 3: The VDID Solution
-
-## 3.1 What is VDID?
-
-VDID (Velon Decentralized Identity) is a unified identity protocol providing:
-
-1. **Decentralized Identifier (DID)** — A globally unique, user-controlled identifier
-2. **Verifiable Credentials** — Portable proofs of attributes and achievements
-3. **Behavioral Profile (V-Score)** — Aggregated on-chain history as portable reputation
-4. **Data Sovereignty** — User-controlled data with optional monetization
-
-## 3.2 The VDID Identifier
-
-Every VDID follows the W3C DID specification:
-
-\`\`\`
-did:vdid:base:0x1234567890abcdef...
-     │    │    │
-     │    │    └── User's unique identifier
-     │    └─────── Primary chain
-     └──────────── VDID method
-\`\`\`
-
-## 3.3 Key Features
-
-### Feature 1: One Identity, All Chains
-
-Create one VDID that works across all supported blockchains:
-- Authenticate on Ethereum DApps
-- Trade on BASE DEXs
-- Participate in Polygon DAOs
-- Access Arbitrum lending protocols
-
-All while maintaining a single, unified reputation.
-
-### Feature 2: Verifiable Credentials
-
-Collect credentials from trusted issuers:
-
-| Credential Type | Examples |
-|-----------------|----------|
-| **Identity** | KYC verification, government ID, proof of humanity |
-| **Achievement** | Education, certifications, community contributions |
-| **Financial** | Credit history, transaction record, collateral |
-
-Credentials are:
-- ✅ Stored under your control
-- ✅ Verifiable without contacting the issuer
-- ✅ Selectively shareable
-
-### Feature 3: V-Score (Behavioral Profile)
-
-VDID aggregates on-chain activity into a **V-Score** — your portable reputation:
-
-**V-Score Components:**
-- Activity Score (30%): Transaction frequency, protocol diversity, consistency
-- Financial Score (35%): Loan repayment, collateral management, asset stability
-- Social Score (20%): DAO participation, community contributions, peer attestations
-- Trust Score (15%): Account age, verification level, security practices
-
-### Feature 4: Data Sovereignty
-
-You fully control your identity data:
-- **View**: See exactly what data exists in your profile
-- **Manage**: Add, remove, or update credentials
-- **Share**: Selectively disclose to specific applications
-- **Revoke**: Withdraw access at any time
-
----
-
-# Chapter 4: How It Works
-
-## 4.1 User Journey: Getting Started
-
-**Step 1: Create Your VDID**
-- Download Velgoo wallet
-- Tap "Create VDID"
-- Securely backup your recovery phrase
-- Your VDID is created: did:vdid:base:0x8a7b...
-
-**Step 2: Build Your Profile**
-- Use Web3 applications normally
-- Your activity automatically builds your V-Score
-- Optionally add credentials (KYC, achievements)
-- Watch your reputation grow
-
-**Step 3: Use It Everywhere**
-- Visit any VDID-integrated application
-- Click "Login with VDID"
-- Your reputation is instantly recognized
-- Enjoy benefits: lower fees, better rates, premium access
-
-## 4.2 User Journey: Proving Attributes
-
-**Traditional Way (without VDID):**
-- Upload passport/ID
-- Wait for verification
-- Your birthdate stored in their database
-- Repeat on every platform
-
-**VDID Way:**
-- Service requests: "Prove age ≥ 18"
-- VDID generates zero-knowledge proof
-- Proof confirms: "Yes, user is over 18"
-- Your actual birthdate is NEVER revealed
-- Verification instant, privacy preserved
-
-## 4.3 Developer Integration
-
-\`\`\`javascript
-import { VDID } from '@vdid/sdk';
-
-// Initialize
-const vdid = new VDID({ network: 'base' });
-
-// Create new identity
-const identity = await vdid.create();
-console.log(identity.did);
-
-// Authenticate existing user
-const auth = await vdid.authenticate({
-  did: 'did:vdid:base:0x...',
-  challenge: serverChallenge
-});
-
-// Verify user meets requirements
-const verified = await vdid.verify({
-  did: userDID,
-  requirements: {
-    minVScore: 200,
-    credentials: ['proof-of-humanity']
-  }
-});
-
-if (verified.valid) {
-  grantAccess(user);
-}
-\`\`\`
-
----
-
-# Chapter 5: Technology
-
-## 5.1 Standards Compliance
-
-VDID is built on open standards:
-
-| Standard | Purpose |
-|----------|---------|
-| **W3C DID Core** | Decentralized identifier specification |
-| **W3C Verifiable Credentials** | Credential data model |
-| **BIP-39/44** | Key derivation and wallet recovery |
-| **EIP-712** | Typed structured data signing |
-
-## 5.2 DID Document
-
-Every VDID has an associated DID Document:
-
-\`\`\`json
-{
-  "@context": ["https://www.w3.org/ns/did/v1"],
-  "id": "did:vdid:base:0x8a7b3c4d5e6f...",
-  "controller": "did:vdid:base:0x8a7b3c4d5e6f...",
-  "verificationMethod": [{
-    "id": "did:vdid:base:0x8a7b...#keys-1",
-    "type": "EcdsaSecp256k1VerificationKey2019",
-    "controller": "did:vdid:base:0x8a7b...",
-    "publicKeyHex": "04a8b9c0d1e2f3..."
-  }],
-  "authentication": ["did:vdid:base:0x8a7b...#keys-1"],
-  "service": [{
-    "id": "did:vdid:base:0x8a7b...#profile",
-    "type": "VDIDProfile",
-    "serviceEndpoint": "https://vdid.io/profile/0x8a7b..."
-  }],
-  "vdid:addresses": {
-    "base": "0x8a7b3c4d5e6f...",
-    "ethereum": "0x8a7b3c4d5e6f...",
-    "polygon": "0x8a7b3c4d5e6f..."
-  },
-  "vdid:vscore": 720
-}
-\`\`\`
-
-## 5.3 Multi-Chain Support
-
-VDID uses deterministic key derivation (BIP-44) to generate addresses across chains:
-
-\`\`\`
-Master Seed (Your Recovery Phrase)
-    │
-    ├── m/44'/60'/0'/0/0  → Ethereum/BASE/Polygon/Arbitrum
-    ├── m/44'/501'/0'/0'  → Solana (future)
-    └── m/44'/784'/0'/0'  → Sui (future)
-\`\`\`
-
-**One recovery phrase = One identity across all chains**
-
-## 5.4 Privacy & Security
-
-### Zero-Knowledge Proofs
-
-Prove attributes without revealing data:
-
-| Want to Prove | What's Revealed | What Stays Private |
-|---------------|-----------------|-------------------|
-| Age ≥ 18 | "Yes, user is over 18" | Actual birthdate |
-| V-Score ≥ 500 | "Yes, score qualifies" | Exact score |
-| KYC completed | "Yes, verified by issuer X" | Personal documents |
-
-### Security Measures
-
-| Layer | Protection |
-|-------|------------|
-| Key Storage | MPC (Multi-Party Computation) |
-| Transport | TLS 1.3, Certificate Pinning |
-| Authentication | Challenge-Response Protocol |
-| Smart Contracts | Third-party Audited |
-| User Data | AES-256 Encryption |
-
----
-
-# Chapter 6: Use Cases
-
-## 6.1 For Users
-
-### DeFi Access
-- **Before**: Provide 150% collateral because protocol doesn't know you
-- **After**: High V-Score = lower collateral (110%), better rates
-
-### Airdrop Eligibility
-- **Before**: Farm with multiple wallets, get flagged as Sybil
-- **After**: One verified VDID proves you're a real, active user
-
-### Cross-Platform Reputation
-- **Before**: 5 years on Uniswap means nothing on new DEX
-- **After**: Your history travels with you, instant recognition
-
-## 6.2 For Developers
-
-### Sybil Resistance
-\`\`\`javascript
-const isHuman = await vdid.verify({
-  did: userDID,
-  credentials: ['proof-of-humanity']
-});
-\`\`\`
-
-### Reputation-Based Features
-\`\`\`javascript
-const vScore = await vdid.getVScore(userDID);
-if (vScore >= 500) {
-  enablePremiumFeatures(user);
-}
-\`\`\`
-
-### Streamlined Onboarding
-\`\`\`javascript
-const hasKYC = await vdid.hasCredential(userDID, 'kyc-verified');
-if (hasKYC) {
-  skipKYCFlow(user);
-}
-\`\`\`
-
-## 6.3 For Applications
-
-| Application Type | VDID Benefit |
-|------------------|--------------|
-| **Lending Protocols** | Risk-adjusted rates based on V-Score |
-| **DAOs** | One-person-one-vote with humanity proof |
-| **NFT Marketplaces** | Verified creator badges |
-| **Gaming** | Anti-cheat identity verification |
-| **Social Platforms** | Bot prevention, reputation systems |
-
----
-
-# Chapter 7: Roadmap
-
-## Development Timeline
-
-**2026 Q1-Q2: Foundation**
-- ✓ VDID Protocol launch on BASE
-- ✓ Core smart contracts deployed
-- ✓ SDK v1.0 release
-- ✓ Velgoo wallet integration
-- Target: 50,000 VDIDs
-
-**2026 Q3-Q4: Expansion**
-- □ Ethereum mainnet deployment
-- □ Polygon deployment
-- □ Arbitrum deployment
-- □ Cross-chain resolver
-- □ ZKP credential verification
-- Target: 500,000 VDIDs
-
-**2027: Maturity**
-- □ Enterprise integrations
-- □ Data marketplace beta
-- □ Advanced privacy features
-- □ 10+ major app integrations
-- Target: 2,000,000 VDIDs
-
-**2028+: Ecosystem Scale**
-- □ Full decentralization
-- □ 10+ chain support
-- □ 100+ app integrations
-- □ Industry standard adoption
-- Target: 10,000,000+ VDIDs
-
----
-
-# Chapter 8: Getting Started
-
-## For Users
-
-### Step 1: Get a VDID-Compatible Wallet
-
-Download **Velgoo** at velgoo.cc — the official Velon ecosystem wallet with native VDID support.
-
-### Step 2: Create Your VDID
-
-Open the wallet → Tap "Create VDID" → Backup your recovery phrase → Done!
-
-### Step 3: Start Using It
-
-Visit any VDID-integrated application, click "Login with VDID", and enjoy your portable identity.
-
-## For Developers
-
-### Integration Steps
-
-1. **Install SDK**: \`npm install @vdid/sdk\`
-2. **Initialize**: Create VDID instance with your network
-3. **Authenticate Users**: Use VDID login flow
-4. **Check Reputation**: Query V-Score or credentials
-5. **Customize Rules**: Set minimum V-Score, required credentials
-
----
-
-# Conclusion
-
-VDID represents a fundamental shift in how digital identity works across Web3. By unifying fragmented identities, enabling portable reputation, and preserving user privacy, VDID unlocks a more trustworthy, more inclusive Web3 ecosystem.
-
-For more information, visit **docs.vdid.io** or join our community on Discord.`;
+import { Navbar } from "@/components/layout/navbar";
+import { useState } from "react";
+import { 
+  Shield, Key, Wallet, Globe, Fingerprint, Users, Zap, 
+  Database, Lock, Code, Terminal, BookOpen, Layers, 
+  CheckCircle, ArrowRight, Copy, ExternalLink, Network,
+  Cpu, FileCode, GitBranch, Box, Activity, Settings
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+type DocSection = 'overview' | 'quickstart' | 'authentication' | 'api' | 'vscore' | 'security' | 'sdk';
 
 export default function Docs() {
-  const [activeTab, setActiveTab] = useState("public");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const content = activeTab === "public" ? FULL_PUBLIC_CONTENT : FULL_TECHNICAL_CONTENT;
-  
-  const filteredContent = useMemo(() => {
-    if (!searchQuery.trim()) return content;
-    const query = searchQuery.toLowerCase();
-    const lines = content.split('\n');
-    const matched = lines.filter(line => line.toLowerCase().includes(query));
-    return matched.join('\n');
-  }, [content, searchQuery, activeTab]);
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
+  const [activeSection, setActiveSection] = useState<DocSection>('overview');
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Top Navigation */}
-      <nav className="h-16 border-b border-secondary bg-background/80 backdrop-blur-sm flex items-center px-6 gap-4 sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <Link href="/">
-            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-              <Shield className="w-5 h-5 text-primary" />
-              <span className="font-mono font-bold text-sm text-white">VELON<span className="text-primary">ID</span></span>
-            </div>
-          </Link>
-          <span className="text-muted-foreground text-xs">Documentation</span>
-        </div>
-
-        <div className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search documentation..." 
-              className="pl-9 bg-secondary border-secondary text-xs"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              data-testid="input-search"
-            />
-          </div>
-        </div>
-
-        <a href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-discord">Discord</a>
-      </nav>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-56 border-r border-secondary bg-card overflow-y-auto sticky top-16 h-[calc(100vh-64px)]">
-          <div className="p-6 space-y-4">
-            {/* Tab Selector */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documentation</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setActiveTab("public")}
-                  className={`text-xs px-3 py-1.5 rounded transition-colors ${
-                    activeTab === "public" 
-                      ? "bg-primary text-primary-foreground font-semibold" 
-                      : "bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
-                  data-testid="button-tab-public"
-                >
-                  Public
-                </button>
-                <button
-                  onClick={() => setActiveTab("technical")}
-                  className={`text-xs px-3 py-1.5 rounded transition-colors ${
-                    activeTab === "technical" 
-                      ? "bg-primary text-primary-foreground font-semibold" 
-                      : "bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
-                  data-testid="button-tab-technical"
-                >
-                  Technical
-                </button>
+    <div className="min-h-screen bg-background text-foreground">
+      <Navbar />
+      
+      <div className="flex pt-16">
+        {/* Sidebar Navigation */}
+        <aside className="hidden lg:block w-72 h-[calc(100vh-64px)] sticky top-16 border-r border-secondary/50 overflow-y-auto">
+          <nav className="p-6 space-y-8">
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Getting Started</h4>
+              <div className="space-y-1">
+                <NavItem 
+                  icon={<BookOpen className="w-4 h-4" />}
+                  label="Overview" 
+                  active={activeSection === 'overview'} 
+                  onClick={() => setActiveSection('overview')} 
+                />
+                <NavItem 
+                  icon={<Zap className="w-4 h-4" />}
+                  label="Quick Start" 
+                  active={activeSection === 'quickstart'} 
+                  onClick={() => setActiveSection('quickstart')} 
+                />
               </div>
             </div>
 
-            {/* Quick Navigation */}
-            <div className="space-y-2 text-xs">
-              <p className="font-semibold text-muted-foreground uppercase">Quick Links</p>
-              <a href="#" className="block text-muted-foreground hover:text-primary transition-colors py-1">📖 Introduction</a>
-              <a href="#" className="block text-muted-foreground hover:text-primary transition-colors py-1">🏗️ Architecture</a>
-              <a href="#" className="block text-muted-foreground hover:text-primary transition-colors py-1">🔐 Security</a>
-              <a href="#" className="block text-muted-foreground hover:text-primary transition-colors py-1">💻 SDK</a>
-              <a href="#" className="block text-muted-foreground hover:text-primary transition-colors py-1">🚀 Getting Started</a>
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Core Concepts</h4>
+              <div className="space-y-1">
+                <NavItem 
+                  icon={<Key className="w-4 h-4" />}
+                  label="Authentication" 
+                  active={activeSection === 'authentication'} 
+                  onClick={() => setActiveSection('authentication')} 
+                />
+                <NavItem 
+                  icon={<Activity className="w-4 h-4" />}
+                  label="V-Score System" 
+                  active={activeSection === 'vscore'} 
+                  onClick={() => setActiveSection('vscore')} 
+                />
+                <NavItem 
+                  icon={<Shield className="w-4 h-4" />}
+                  label="Security" 
+                  active={activeSection === 'security'} 
+                  onClick={() => setActiveSection('security')} 
+                />
+              </div>
             </div>
-          </div>
+
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Developers</h4>
+              <div className="space-y-1">
+                <NavItem 
+                  icon={<Terminal className="w-4 h-4" />}
+                  label="API Reference" 
+                  active={activeSection === 'api'} 
+                  onClick={() => setActiveSection('api')} 
+                />
+                <NavItem 
+                  icon={<Box className="w-4 h-4" />}
+                  label="SDK & Libraries" 
+                  active={activeSection === 'sdk'} 
+                  onClick={() => setActiveSection('sdk')} 
+                />
+              </div>
+            </div>
+
+            {/* Resources Box */}
+            <div className="p-4 rounded-lg bg-secondary/30 border border-secondary/50">
+              <h4 className="font-medium text-sm mb-2">Need Help?</h4>
+              <p className="text-xs text-muted-foreground mb-3">Join our community for support and updates.</p>
+              <a href="https://discord.gg/velon" target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="outline" className="w-full text-xs">
+                  Join Discord
+                  <ExternalLink className="w-3 h-3 ml-2" />
+                </Button>
+              </a>
+            </div>
+          </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-background">
-          <div className="max-w-4xl px-12 py-12 prose prose-invert max-w-none">
-            <div className="space-y-6">
-              {filteredContent.split('\n\n').map((section, idx) => {
-                if (!section.trim()) return null;
-                
-                // Handle headers
-                if (section.startsWith('# ')) {
-                  const title = section.replace(/^# /, '').trim();
-                  return (
-                    <div key={idx} className="space-y-2">
-                      <h1 className="text-3xl font-bold text-white">{title}</h1>
-                      <div className="h-1 w-20 bg-primary rounded"></div>
-                    </div>
-                  );
-                }
-                if (section.startsWith('## ')) {
-                  const title = section.replace(/^## /, '').trim();
-                  return <h2 key={idx} className="text-2xl font-bold text-white mt-8 mb-4">{title}</h2>;
-                }
-                if (section.startsWith('### ')) {
-                  const title = section.replace(/^### /, '').trim();
-                  return <h3 key={idx} className="text-lg font-semibold text-white mt-6 mb-3">{title}</h3>;
-                }
-
-                // Handle code blocks
-                if (section.includes('```')) {
-                  const parts = section.split('```');
-                  return (
-                    <div key={idx} className="space-y-2">
-                      {parts.map((part, i) => {
-                        if (i % 2 === 0) {
-                          return part.trim() ? <p key={i} className="text-muted-foreground text-sm">{part}</p> : null;
-                        }
-                        return (
-                          <div key={i} className="relative">
-                            <pre className="bg-secondary p-4 rounded-lg overflow-x-auto text-xs font-mono text-muted-foreground">
-                              <code>{part.trim()}</code>
-                            </pre>
-                            <button
-                              onClick={() => copyCode(part.trim())}
-                              className="absolute top-2 right-2 p-1.5 bg-primary/20 hover:bg-primary/30 rounded transition-colors"
-                              data-testid="button-copy"
-                            >
-                              {copiedCode === part.trim() ? (
-                                <Check className="w-4 h-4 text-primary" />
-                              ) : (
-                                <Copy className="w-4 h-4 text-muted-foreground" />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                }
-
-                // Handle tables
-                if (section.includes('|')) {
-                  return (
-                    <div key={idx} className="overflow-x-auto my-4">
-                      <table className="w-full text-xs border-collapse">
-                        <tbody>
-                          {section.split('\n').map((row, i) => (
-                            row.trim().startsWith('|') ? (
-                              <tr key={i} className={i === 1 ? "border-b border-secondary" : ""}>
-                                {row.split('|').filter(cell => cell.trim()).map((cell, j) => (
-                                  <td key={j} className="border border-secondary/30 p-3 text-muted-foreground">
-                                    {cell.trim().replace(/^-+$/, '')}
-                                  </td>
-                                ))}
-                              </tr>
-                            ) : null
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                }
-
-                // Handle lists
-                if (section.includes('- ')) {
-                  return (
-                    <ul key={idx} className="list-disc list-inside space-y-2 text-muted-foreground text-sm">
-                      {section.split('\n').map((item, i) => 
-                        item.trim().startsWith('- ') ? (
-                          <li key={i}>{item.replace(/^- /, '').trim()}</li>
-                        ) : null
-                      )}
-                    </ul>
-                  );
-                }
-
-                // Regular paragraphs
-                return (
-                  <p key={idx} className="text-muted-foreground leading-relaxed text-sm">
-                    {section.trim()}
-                  </p>
-                );
-              })}
-            </div>
+        <main className="flex-1 min-w-0">
+          <div className="max-w-4xl mx-auto px-6 py-12">
+            {activeSection === 'overview' && <OverviewSection />}
+            {activeSection === 'quickstart' && <QuickStartSection />}
+            {activeSection === 'authentication' && <AuthenticationSection />}
+            {activeSection === 'api' && <APISection />}
+            {activeSection === 'vscore' && <VScoreSection />}
+            {activeSection === 'security' && <SecuritySection />}
+            {activeSection === 'sdk' && <SDKSection />}
           </div>
         </main>
+
+        {/* Right Sidebar - On This Page */}
+        <aside className="hidden xl:block w-56 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
+          <div className="p-6">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">On This Page</h4>
+            <div className="space-y-2 text-sm">
+              <a href="#" className="block text-muted-foreground hover:text-white transition-colors">Introduction</a>
+              <a href="#" className="block text-muted-foreground hover:text-white transition-colors">Key Features</a>
+              <a href="#" className="block text-muted-foreground hover:text-white transition-colors">Architecture</a>
+              <a href="#" className="block text-muted-foreground hover:text-white transition-colors">Next Steps</a>
+            </div>
+          </div>
+        </aside>
       </div>
+    </div>
+  );
+}
+
+function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        active 
+          ? 'bg-primary/10 text-primary' 
+          : 'text-muted-foreground hover:text-white hover:bg-secondary/50'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function OverviewSection() {
+  return (
+    <div className="space-y-12">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+          <BookOpen className="w-3 h-3" />
+          Documentation
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">VDID Overview</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          VDID is a decentralized identity protocol that enables secure, 
+          user-controlled authentication across the Velon ecosystem and beyond.
+        </p>
+      </div>
+
+      {/* What is VDID */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Globe className="w-4 h-4 text-primary" />
+          </div>
+          What is VDID?
+        </h2>
+        <p className="text-muted-foreground leading-relaxed">
+          VDID (Velon Decentralized ID) provides a unified identity layer that connects 
+          users to multiple applications with a single, verifiable credential. Unlike 
+          traditional identity systems, VDID puts users in control of their data while 
+          enabling seamless authentication across Web3 and Web2 platforms.
+        </p>
+        
+        <div className="grid md:grid-cols-2 gap-4">
+          <FeatureCard
+            icon={<Wallet className="w-5 h-5" />}
+            title="Wallet-Native"
+            description="Authenticate with any EVM-compatible wallet using SIWE standard"
+          />
+          <FeatureCard
+            icon={<Shield className="w-5 h-5" />}
+            title="Non-Custodial"
+            description="You own your identity. No central authority controls your data"
+          />
+          <FeatureCard
+            icon={<Fingerprint className="w-5 h-5" />}
+            title="Passkey Support"
+            description="Biometric authentication for the highest security level"
+          />
+          <FeatureCard
+            icon={<Network className="w-5 h-5" />}
+            title="Multi-Chain"
+            description="Works across Ethereum, Polygon, Arbitrum, Base, and more"
+          />
+        </div>
+      </div>
+
+      {/* Architecture */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Layers className="w-4 h-4 text-accent" />
+          </div>
+          Architecture
+        </h2>
+        
+        <div className="p-6 rounded-xl bg-secondary/30 border border-secondary/50 space-y-6">
+          <div className="grid md:grid-cols-3 gap-6">
+            <ArchBlock 
+              title="Identity Layer"
+              items={["V-ID Generation", "DID Registry", "Credential Storage"]}
+            />
+            <ArchBlock 
+              title="Auth Layer"
+              items={["SIWE Protocol", "OAuth 2.0 / OIDC", "Passkeys / WebAuthn"]}
+            />
+            <ArchBlock 
+              title="Integration Layer"
+              items={["REST API", "SDK Libraries", "Webhook Events"]}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Ecosystem */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+            <Zap className="w-4 h-4 text-green-500" />
+          </div>
+          Velon Ecosystem Integration
+        </h2>
+        
+        <p className="text-muted-foreground leading-relaxed">
+          VDID serves as the identity backbone for all Velon products, enabling seamless 
+          user experiences across the entire ecosystem.
+        </p>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          <EcosystemCard 
+            name="Velgoo"
+            description="Access the Velon super-app with your V-ID"
+            status="Live"
+          />
+          <EcosystemCard 
+            name="RTPX"
+            description="Behavior-to-value protocol integration"
+            status="Live"
+          />
+          <EcosystemCard 
+            name="FlowID"
+            description="Next-gen decentralized identity"
+            status="Coming Soon"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickStartSection() {
+  return (
+    <div className="space-y-12">
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+          <Zap className="w-3 h-3" />
+          Quick Start
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">Get Started in Minutes</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          Integrate VDID into your application and start authenticating users in under 10 minutes.
+        </p>
+      </div>
+
+      {/* Steps */}
+      <div className="space-y-8">
+        <StepBlock
+          step="Install the SDK"
+          description="Add VDID to your project using npm or yarn"
+          code="npm install @velon/vdid-sdk"
+        />
+        
+        <StepBlock
+          step="Initialize Client"
+          description="Configure the VDID client with your application credentials"
+          code={`import { VDIDClient } from '@velon/vdid-sdk';
+
+const vdid = new VDIDClient({
+  appId: 'your-app-id',
+  redirectUri: 'https://yourapp.com/callback'
+});`}
+        />
+
+        <StepBlock
+          step="Authenticate Users"
+          description="Trigger the authentication flow with a single method call"
+          code={`const result = await vdid.authenticate({
+  methods: ['wallet', 'email', 'passkey']
+});
+
+console.log(result.user.vid); // VID-XXXX-XXXX-XXXX`}
+        />
+      </div>
+
+      {/* Next Steps */}
+      <div className="p-6 rounded-xl bg-primary/5 border border-primary/20">
+        <h3 className="font-semibold text-lg mb-4">What's Next?</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <NextStepLink icon={<Key />} title="Authentication Methods" description="Learn about SIWE, Passkeys, and more" />
+          <NextStepLink icon={<Terminal />} title="API Reference" description="Explore the full API documentation" />
+          <NextStepLink icon={<Activity />} title="V-Score Integration" description="Implement reputation scoring" />
+          <NextStepLink icon={<Shield />} title="Security Best Practices" description="Secure your integration" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuthenticationSection() {
+  return (
+    <div className="space-y-12">
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+          <Key className="w-3 h-3" />
+          Core Concepts
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">Authentication</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          VDID supports multiple authentication methods to accommodate different user preferences and security requirements.
+        </p>
+      </div>
+
+      {/* SIWE */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Wallet className="w-4 h-4 text-primary" />
+          </div>
+          Sign-In with Ethereum (SIWE)
+        </h2>
+        <p className="text-muted-foreground leading-relaxed">
+          SIWE is the standard for wallet-based authentication. Users sign a message with their 
+          private key to prove ownership of their wallet address.
+        </p>
+        
+        <div className="grid md:grid-cols-2 gap-6">
+          <InfoCard 
+            icon={<CheckCircle className="w-5 h-5 text-green-500" />}
+            title="Benefits"
+            items={[
+              "No password needed",
+              "Cryptographically secure",
+              "Works with any EVM wallet",
+              "User retains key ownership"
+            ]}
+          />
+          <InfoCard 
+            icon={<Network className="w-5 h-5 text-primary" />}
+            title="Supported Wallets"
+            items={[
+              "MetaMask",
+              "WalletConnect",
+              "Coinbase Wallet",
+              "Rainbow, Trust, etc."
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* Passkeys */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Fingerprint className="w-4 h-4 text-accent" />
+          </div>
+          Passkeys (WebAuthn)
+        </h2>
+        <p className="text-muted-foreground leading-relaxed">
+          Passkeys provide the highest level of security using biometrics or hardware security keys. 
+          They're phishing-resistant and eliminate the need for passwords entirely.
+        </p>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          <MetricDisplay icon={<Lock />} value="100%" label="Phishing Resistant" />
+          <MetricDisplay icon={<Zap />} value="<1s" label="Auth Time" />
+          <MetricDisplay icon={<Shield />} value="FIDO2" label="Standard" />
+        </div>
+      </div>
+
+      {/* OAuth */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+            <Globe className="w-4 h-4 text-orange-500" />
+          </div>
+          OAuth 2.0 / OpenID Connect
+        </h2>
+        <p className="text-muted-foreground leading-relaxed">
+          For traditional web applications, VDID acts as an OAuth 2.0 provider with OIDC support, 
+          enabling standard SSO integrations.
+        </p>
+
+        <CodeBlock code={`// OAuth Authorization URL
+GET /oauth/authorize
+  ?client_id=your-client-id
+  &redirect_uri=https://yourapp.com/callback
+  &response_type=code
+  &scope=openid profile email
+  &state=random-state-value`} />
+      </div>
+    </div>
+  );
+}
+
+function VScoreSection() {
+  return (
+    <div className="space-y-12">
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+          <Activity className="w-3 h-3" />
+          Core Concepts
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">V-Score System</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          V-Score is a dynamic reputation system that quantifies user trustworthiness 
+          and engagement across the Velon ecosystem.
+        </p>
+      </div>
+
+      {/* Score Components */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold">Score Components</h2>
+        
+        <div className="grid md:grid-cols-2 gap-6">
+          <ScoreCard 
+            icon={<Activity className="w-6 h-6" />}
+            title="Activity Score"
+            value={250}
+            max={300}
+            color="primary"
+            description="Based on platform usage, transactions, and engagement frequency"
+          />
+          <ScoreCard 
+            icon={<Shield className="w-6 h-6" />}
+            title="Trust Score"
+            value={180}
+            max={200}
+            color="green"
+            description="Reflects identity verification level and security practices"
+          />
+          <ScoreCard 
+            icon={<Users className="w-6 h-6" />}
+            title="Social Score"
+            value={120}
+            max={200}
+            color="blue"
+            description="Measures community participation and referral network"
+          />
+          <ScoreCard 
+            icon={<Layers className="w-6 h-6" />}
+            title="Ecosystem Score"
+            value={280}
+            max={300}
+            color="purple"
+            description="Integration with Velon products and partner applications"
+          />
+        </div>
+      </div>
+
+      {/* How It Works */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Cpu className="w-4 h-4 text-accent" />
+          </div>
+          How V-Score Works
+        </h2>
+        
+        <div className="space-y-4">
+          <ProcessStep 
+            icon={<Database />}
+            title="Data Collection"
+            description="User activities across Velon ecosystem are tracked in real-time"
+          />
+          <ProcessStep 
+            icon={<Cpu />}
+            title="Score Calculation"
+            description="Weighted algorithms compute individual component scores"
+          />
+          <ProcessStep 
+            icon={<Activity />}
+            title="Dynamic Updates"
+            description="Total V-Score updates continuously based on behavior"
+          />
+          <ProcessStep 
+            icon={<Zap />}
+            title="RTPX Integration"
+            description="High scores unlock rewards through the behavior-to-value protocol"
+          />
+        </div>
+      </div>
+
+      {/* API Example */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">Retrieve V-Score via API</h2>
+        <CodeBlock code={`// Get user's V-Score
+GET /api/vscore/:userId
+
+// Response
+{
+  "totalScore": 830,
+  "level": "Elite",
+  "components": {
+    "activity": 250,
+    "trust": 180,
+    "social": 120,
+    "ecosystem": 280
+  },
+  "percentile": 94
+}`} />
+      </div>
+    </div>
+  );
+}
+
+function SecuritySection() {
+  return (
+    <div className="space-y-12">
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+          <Shield className="w-3 h-3" />
+          Core Concepts
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">Security</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          VDID is built with security-first principles, implementing industry best practices 
+          and cutting-edge cryptographic standards.
+        </p>
+      </div>
+
+      {/* Security Features */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <SecurityCard 
+          icon={<Lock />}
+          title="Argon2id Password Hashing"
+          description="Memory-hard algorithm resistant to GPU attacks"
+          badge="OWASP Recommended"
+        />
+        <SecurityCard 
+          icon={<Key />}
+          title="JWT with RS256"
+          description="Asymmetric signing for tamper-proof tokens"
+          badge="RFC 7519"
+        />
+        <SecurityCard 
+          icon={<Shield />}
+          title="Rate Limiting"
+          description="Protection against brute-force and DDoS attacks"
+          badge="Adaptive"
+        />
+        <SecurityCard 
+          icon={<Database />}
+          title="Encrypted at Rest"
+          description="AES-256 encryption for all sensitive data"
+          badge="SOC 2"
+        />
+      </div>
+
+      {/* Audit & Compliance */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+            <CheckCircle className="w-4 h-4 text-green-500" />
+          </div>
+          Audit & Compliance
+        </h2>
+        
+        <div className="p-6 rounded-xl bg-secondary/30 border border-secondary/50">
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">100%</div>
+              <div className="text-sm text-muted-foreground">Open Source</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">Quarterly</div>
+              <div className="text-sm text-muted-foreground">Security Audits</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">GDPR</div>
+              <div className="text-sm text-muted-foreground">Compliant</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function APISection() {
+  return (
+    <div className="space-y-12">
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+          <Terminal className="w-3 h-3" />
+          Developers
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">API Reference</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          Complete REST API documentation for integrating VDID into your applications.
+        </p>
+      </div>
+
+      {/* Base URL */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">Base URL</h2>
+        <CodeBlock code="https://api.vdid.io/v1" />
+      </div>
+
+      {/* Endpoints */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold">Endpoints</h2>
+        
+        <EndpointCard 
+          method="POST"
+          path="/auth/register"
+          description="Create a new V-ID account"
+        />
+        <EndpointCard 
+          method="POST"
+          path="/auth/login"
+          description="Authenticate with email and password"
+        />
+        <EndpointCard 
+          method="POST"
+          path="/wallet/nonce"
+          description="Request SIWE nonce for wallet authentication"
+        />
+        <EndpointCard 
+          method="POST"
+          path="/wallet/verify"
+          description="Verify wallet signature and authenticate"
+        />
+        <EndpointCard 
+          method="GET"
+          path="/vscore/:userId"
+          description="Retrieve user's V-Score and components"
+        />
+        <EndpointCard 
+          method="GET"
+          path="/user/profile"
+          description="Get authenticated user's profile"
+        />
+      </div>
+
+      {/* Authentication */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">Authentication</h2>
+        <p className="text-muted-foreground">Include the JWT token in the Authorization header:</p>
+        <CodeBlock code={`Authorization: Bearer <your-jwt-token>`} />
+      </div>
+    </div>
+  );
+}
+
+function SDKSection() {
+  return (
+    <div className="space-y-12">
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+          <Box className="w-3 h-3" />
+          Developers
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">SDK & Libraries</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          Official SDKs and community libraries for easy VDID integration.
+        </p>
+      </div>
+
+      {/* Official SDKs */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold">Official SDKs</h2>
+        
+        <div className="grid md:grid-cols-2 gap-4">
+          <SDKCard 
+            icon={<FileCode />}
+            name="JavaScript / TypeScript"
+            package="@velon/vdid-sdk"
+            status="Stable"
+          />
+          <SDKCard 
+            icon={<FileCode />}
+            name="React Components"
+            package="@velon/vdid-react"
+            status="Stable"
+          />
+          <SDKCard 
+            icon={<FileCode />}
+            name="Python"
+            package="vdid-python"
+            status="Beta"
+          />
+          <SDKCard 
+            icon={<FileCode />}
+            name="Go"
+            package="go-vdid"
+            status="Coming Soon"
+          />
+        </div>
+      </div>
+
+      {/* Installation */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">Installation</h2>
+        <CodeBlock code={`# npm
+npm install @velon/vdid-sdk
+
+# yarn
+yarn add @velon/vdid-sdk
+
+# pnpm
+pnpm add @velon/vdid-sdk`} />
+      </div>
+    </div>
+  );
+}
+
+// Reusable Components
+function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="p-4 rounded-lg bg-secondary/30 border border-secondary/50 flex items-start gap-4">
+      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+        {icon}
+      </div>
+      <div>
+        <h4 className="font-medium text-white mb-1">{title}</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function ArchBlock({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="p-4 rounded-lg bg-background border border-secondary/50">
+      <h4 className="font-medium text-white mb-3">{title}</h4>
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function EcosystemCard({ name, description, status }: { name: string; description: string; status: string }) {
+  return (
+    <div className="p-5 rounded-xl bg-card border border-secondary hover:border-primary/30 transition-colors">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-semibold text-white">{name}</h4>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded ${status === 'Live' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
+          {status}
+        </span>
+      </div>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function StepBlock({ step, description, code }: { step: string; description: string; code: string }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-lg font-semibold text-white">{step}</h3>
+      <p className="text-muted-foreground">{description}</p>
+      <CodeBlock code={code} />
+    </div>
+  );
+}
+
+function CodeBlock({ code }: { code: string }) {
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(code);
+  };
+
+  return (
+    <div className="relative group">
+      <pre className="p-4 rounded-lg bg-[#0d1117] border border-secondary/50 overflow-x-auto text-sm">
+        <code className="text-gray-300">{code}</code>
+      </pre>
+      <button 
+        onClick={copyToClipboard}
+        className="absolute top-3 right-3 p-2 rounded-md bg-secondary/50 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <Copy className="w-4 h-4 text-muted-foreground" />
+      </button>
+    </div>
+  );
+}
+
+function NextStepLink({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-primary/5 cursor-pointer transition-colors">
+      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+        {icon}
+      </div>
+      <div>
+        <h4 className="font-medium text-white text-sm">{title}</h4>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function InfoCard({ icon, title, items }: { icon: React.ReactNode; title: string; items: string[] }) {
+  return (
+    <div className="p-5 rounded-xl bg-secondary/20 border border-secondary/50">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <h4 className="font-medium text-white">{title}</h4>
+      </div>
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function MetricDisplay({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
+  return (
+    <div className="p-4 rounded-lg bg-secondary/20 border border-secondary/50 text-center">
+      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mx-auto mb-3">
+        {icon}
+      </div>
+      <div className="text-2xl font-bold text-white">{value}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function ScoreCard({ icon, title, value, max, color, description }: { icon: React.ReactNode; title: string; value: number; max: number; color: string; description: string }) {
+  const percentage = (value / max) * 100;
+  const colorClasses: Record<string, string> = {
+    primary: 'bg-primary',
+    green: 'bg-green-500',
+    blue: 'bg-blue-500',
+    purple: 'bg-purple-500'
+  };
+
+  return (
+    <div className="p-5 rounded-xl bg-card border border-secondary">
+      <div className="flex items-center gap-3 mb-4">
+        <div className={`w-12 h-12 rounded-lg bg-${color === 'primary' ? 'primary' : color + '-500'}/10 flex items-center justify-center text-${color === 'primary' ? 'primary' : color + '-500'}`}>
+          {icon}
+        </div>
+        <div>
+          <h4 className="font-medium text-white">{title}</h4>
+          <p className="text-2xl font-bold">{value}<span className="text-sm text-muted-foreground">/{max}</span></p>
+        </div>
+      </div>
+      <div className="w-full h-2 rounded-full bg-secondary mb-3">
+        <div className={`h-full rounded-full ${colorClasses[color]}`} style={{ width: `${percentage}%` }}></div>
+      </div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function ProcessStep({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-4 p-4 rounded-lg bg-secondary/20 border border-secondary/50">
+      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+        {icon}
+      </div>
+      <div>
+        <h4 className="font-medium text-white mb-1">{title}</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function SecurityCard({ icon, title, description, badge }: { icon: React.ReactNode; title: string; description: string; badge: string }) {
+  return (
+    <div className="p-5 rounded-xl bg-card border border-secondary hover:border-primary/30 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
+          {icon}
+        </div>
+        <span className="px-2 py-0.5 text-xs font-medium bg-secondary rounded text-muted-foreground">{badge}</span>
+      </div>
+      <h4 className="font-medium text-white mb-2">{title}</h4>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function EndpointCard({ method, path, description }: { method: string; path: string; description: string }) {
+  const methodColors: Record<string, string> = {
+    GET: 'bg-green-500/20 text-green-400',
+    POST: 'bg-blue-500/20 text-blue-400',
+    PUT: 'bg-orange-500/20 text-orange-400',
+    DELETE: 'bg-red-500/20 text-red-400'
+  };
+
+  return (
+    <div className="p-4 rounded-lg bg-secondary/20 border border-secondary/50 flex items-center gap-4">
+      <span className={`px-3 py-1 text-xs font-mono font-medium rounded ${methodColors[method]}`}>{method}</span>
+      <code className="text-sm font-mono text-primary">{path}</code>
+      <span className="text-sm text-muted-foreground ml-auto hidden md:block">{description}</span>
+    </div>
+  );
+}
+
+function SDKCard({ icon, name, package: pkg, status }: { icon: React.ReactNode; name: string; package: string; status: string }) {
+  const statusColors: Record<string, string> = {
+    'Stable': 'bg-green-500/20 text-green-400',
+    'Beta': 'bg-orange-500/20 text-orange-400',
+    'Coming Soon': 'bg-secondary text-muted-foreground'
+  };
+
+  return (
+    <div className="p-5 rounded-xl bg-card border border-secondary hover:border-primary/30 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+          {icon}
+        </div>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[status]}`}>{status}</span>
+      </div>
+      <h4 className="font-medium text-white mb-1">{name}</h4>
+      <code className="text-sm text-muted-foreground">{pkg}</code>
     </div>
   );
 }

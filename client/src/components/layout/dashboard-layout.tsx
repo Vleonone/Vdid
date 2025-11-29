@@ -1,102 +1,144 @@
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, 
-  Shield, 
-  Grid, 
-  LogOut, 
-  Settings, 
-  Bell,
-  Menu,
-  X
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  LayoutDashboard, Shield, Layers, Settings, LogOut, 
+  Menu, X, ChevronDown, User, Bell
+} from "lucide-react";
 import { useState } from "react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
 
-  const NavItem = ({ href, icon, label }: { href: string, icon: React.ReactNode, label: string }) => {
-    const isActive = location === href;
-    return (
-      <Link href={href}>
-        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-md text-sm cursor-pointer transition-colors ${isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
-          {icon}
-          <span>{label}</span>
-        </div>
-      </Link>
-    );
+export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [location, setLocation] = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setLocation('/');
   };
 
-  const SidebarContent = () => (
-    <div className="h-full flex flex-col bg-background border-r border-secondary">
-      <div className="p-6 border-b border-secondary">
-        <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          <span className="font-mono font-bold text-sm text-white">VELON<span className="text-primary">ID</span></span>
-        </div>
-      </div>
-      
-      <div className="flex-1 py-6 px-4 space-y-2">
-        <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Overview" />
-        <NavItem href="/dashboard/security" icon={<Shield className="w-4 h-4" />} label="Security" />
-        <NavItem href="/dashboard/apps" icon={<Grid className="w-4 h-4" />} label="Apps" />
-      </div>
-      
-      <div className="p-4 border-t border-secondary">
-        <Link href="/login">
-          <Button variant="ghost" className="w-full justify-start text-xs text-muted-foreground hover:text-destructive">
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
-        </Link>
-      </div>
-    </div>
-  );
+  const navItems = [
+    { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Overview', path: '/dashboard' },
+    { icon: <Shield className="w-5 h-5" />, label: 'Security', path: '/dashboard/security' },
+    { icon: <Layers className="w-5 h-5" />, label: 'Connected Apps', path: '/dashboard/apps' },
+    { icon: <Settings className="w-5 h-5" />, label: 'Settings', path: '/dashboard/settings' },
+  ];
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground">
-      <div className="hidden md:block w-56 fixed inset-y-0 z-30">
-        <SidebarContent />
-      </div>
-
-      <div className="flex-1 md:ml-56 flex flex-col min-h-screen">
-        <header className="h-16 border-b border-secondary sticky top-0 z-20 px-6 flex items-center justify-between bg-background/50 backdrop-blur-sm">
-          <div className="md:hidden">
-             <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="w-4 h-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-56 border-r border-secondary bg-background">
-                <SidebarContent />
-              </SheetContent>
-            </Sheet>
-          </div>
-          
-          <div className="flex items-center gap-4 ml-auto">
-            <Button variant="ghost" size="icon" className="text-muted-foreground">
-              <Bell className="w-4 h-4" />
-            </Button>
-            <div className="flex items-center gap-3 pl-4 border-l border-secondary">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-medium leading-none">Alice Chen</p>
-                <p className="text-[10px] text-muted-foreground mt-1 font-mono">VID-8842-9912</p>
+    <div className="min-h-screen bg-background">
+      {/* Top Navbar */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-secondary/50 bg-background/80 backdrop-blur-xl">
+        <div className="flex h-full items-center justify-between px-4 lg:px-6">
+          {/* Logo */}
+          <div className="flex items-center gap-4">
+            <button 
+              className="lg:hidden p-2 text-muted-foreground hover:text-white"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+            
+            <Link href="/">
+              <div className="flex items-center gap-2 cursor-pointer">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">V</span>
+                </div>
+                <span className="font-bold text-lg hidden sm:block">
+                  <span className="text-white">VD</span>
+                  <span className="text-primary">ID</span>
+                </span>
               </div>
-              <Avatar className="h-8 w-8 border border-secondary">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>AC</AvatarFallback>
-              </Avatar>
-            </div>
+            </Link>
           </div>
-        </header>
 
-        <main className="flex-1 p-6 overflow-y-auto">
+          {/* Right Section */}
+          <div className="flex items-center gap-3">
+            <button className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-white transition-colors relative">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full"></span>
+            </button>
+            
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/30 border border-secondary/50">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <User className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-sm font-medium">My Account</span>
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </div>
+
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-white"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Sidebar - Desktop */}
+      <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 border-r border-secondary/50 bg-background">
+        <nav className="p-4 space-y-2">
+          {navItems.map((item) => (
+            <Link key={item.path} href={item.path}>
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${
+                location === item.path || (item.path === '/dashboard' && location === '/dashboard')
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-white hover:bg-secondary/50'
+              }`}>
+                {item.icon}
+                <span className="font-medium">{item.label}</span>
+              </div>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-secondary/50">
+          <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20">
+            <div className="text-sm font-medium mb-1">V-Score</div>
+            <div className="text-2xl font-bold text-primary">830</div>
+            <div className="text-xs text-muted-foreground mt-1">Top 6% of users</div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Sidebar */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-16 bottom-0 w-64 bg-background border-r border-secondary/50 animate-in slide-in-from-left duration-200">
+            <nav className="p-4 space-y-2">
+              {navItems.map((item) => (
+                <Link key={item.path} href={item.path}>
+                  <div 
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${
+                      location === item.path 
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-white hover:bg-secondary/50'
+                    }`}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    {item.icon}
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                </Link>
+              ))}
+            </nav>
+          </aside>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="lg:pl-64 pt-16">
+        <div className="p-6 lg:p-8">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

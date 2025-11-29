@@ -1,24 +1,26 @@
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Loader2, Wallet, KeyRound } from "lucide-react";
-import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { Wallet, Mail, Fingerprint, ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { WalletConnect } from "@/components/wallet-connect";
 
+type AuthMethod = 'wallet' | 'email' | 'passkey';
+
 export default function Login() {
-  const [_, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('wallet');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
+    setError('');
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -29,135 +31,250 @@ export default function Login() {
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+      if (data.success) {
+        localStorage.setItem('token', data.data.accessToken);
+        setLocation('/dashboard');
+      } else {
+        setError(data.error || 'Login failed');
       }
-
-      localStorage.setItem('accessToken', data.accessToken);
-      setLocation("/dashboard");
     } catch (err) {
-      setError((err as Error).message);
+      setError('Connection error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleWalletSuccess = (data: { user: any; accessToken: string; isNewUser: boolean }) => {
+  const handleWalletSuccess = (data: any) => {
+    localStorage.setItem('token', data.accessToken);
     if (data.isNewUser) {
-      setLocation("/dashboard?welcome=true");
+      setLocation('/dashboard?welcome=true');
     } else {
-      setLocation("/dashboard");
+      setLocation('/dashboard');
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex items-center justify-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <span className="font-mono text-xs text-muted-foreground">VELON ID</span>
-          </div>
-          <h1 className="text-3xl font-bold">Welcome Back</h1>
-          <p className="text-muted-foreground text-sm">Verify your identity to continue</p>
+    <div className="min-h-screen bg-background flex">
+      {/* Left Side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-background p-12 flex-col justify-between relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="relative">
+          <Link href="/">
+            <div className="flex items-center gap-2 cursor-pointer">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                <span className="text-white font-bold">V</span>
+              </div>
+              <span className="font-bold text-xl">
+                <span className="text-white">VD</span>
+                <span className="text-primary">ID</span>
+              </span>
+            </div>
+          </Link>
         </div>
 
-        <Card className="border-secondary bg-card animate-in fade-in zoom-in-95 duration-500 delay-100">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Authentication</CardTitle>
-            <CardDescription>Choose your verification method</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="wallet" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6 bg-secondary">
-                <TabsTrigger value="wallet" className="gap-1">
-                  <Wallet className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Wallet</span>
-                </TabsTrigger>
-                <TabsTrigger value="email" className="gap-1">
-                  <span>Email</span>
-                </TabsTrigger>
-                <TabsTrigger value="passkey" className="gap-1">
-                  <KeyRound className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Passkey</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="wallet">
-                <WalletConnect 
-                  onSuccess={handleWalletSuccess}
-                  onError={(err) => setError(err.message)}
-                />
-              </TabsContent>
-              
-              <TabsContent value="email">
-                <form onSubmit={handleEmailLogin} className="space-y-4">
-                  {error && (
-                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                      {error}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      placeholder="name@example.com" 
-                      required 
-                      className="bg-input border-secondary"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
-                      <a href="#" className="text-xs text-primary hover:underline">Forgot?</a>
-                    </div>
-                    <Input 
-                      id="password" 
-                      type="password" 
-                      required 
-                      className="bg-input border-secondary"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : "Sign In"}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="passkey">
-                <div className="space-y-4 py-4">
-                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Sign In with Passkey
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground">
-                    Use your device's biometrics or security key
-                  </p>
+        <div className="relative space-y-6">
+          <h1 className="text-4xl font-bold leading-tight">
+            Welcome Back to
+            <br />
+            <span className="text-primary">Decentralized Identity</span>
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-md">
+            Your V-ID is your universal passport across the Velon ecosystem. 
+            Sign in securely with your wallet, email, or passkey.
+          </p>
+        </div>
+
+        <div className="relative text-sm text-muted-foreground">
+          © 2025 Velon Labs. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right Side - Login Form */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+              <span className="text-white font-bold">V</span>
+            </div>
+            <span className="font-bold text-xl">
+              <span className="text-white">VD</span>
+              <span className="text-primary">ID</span>
+            </span>
+          </div>
+
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold">Sign In</h2>
+            <p className="text-muted-foreground mt-2">Choose your preferred authentication method</p>
+          </div>
+
+          {/* Auth Method Tabs */}
+          <div className="flex rounded-xl bg-secondary/30 p-1">
+            <AuthTab 
+              icon={<Wallet className="w-4 h-4" />}
+              label="Wallet"
+              active={authMethod === 'wallet'}
+              onClick={() => setAuthMethod('wallet')}
+            />
+            <AuthTab 
+              icon={<Mail className="w-4 h-4" />}
+              label="Email"
+              active={authMethod === 'email'}
+              onClick={() => setAuthMethod('email')}
+            />
+            <AuthTab 
+              icon={<Fingerprint className="w-4 h-4" />}
+              label="Passkey"
+              active={authMethod === 'passkey'}
+              onClick={() => setAuthMethod('passkey')}
+            />
+          </div>
+
+          {/* Wallet Login */}
+          {authMethod === 'wallet' && (
+            <div className="space-y-6">
+              <WalletConnect 
+                mode="login"
+                onSuccess={handleWalletSuccess}
+                onError={(err) => setError(err.message)}
+              />
+              <p className="text-center text-sm text-muted-foreground">
+                Sign a message to verify wallet ownership
+              </p>
+            </div>
+          )}
+
+          {/* Email Login */}
+          {authMethod === 'email' && (
+            <form onSubmit={handleEmailLogin} className="space-y-6">
+              {error && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  {error}
                 </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          <CardFooter className="border-t border-secondary pt-4">
-            <p className="text-xs text-muted-foreground w-full text-center">
-              Don't have V-ID? <Link href="/register" className="text-primary font-semibold hover:underline">Create one</Link>
-            </p>
-          </CardFooter>
-        </Card>
-        
-        <p className="text-xs text-center text-muted-foreground">
-          Powered by <span className="text-primary">SIWE</span> • Secure • Decentralized
-        </p>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-secondary/30 border-secondary"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <a href="#" className="text-sm text-primary hover:underline">Forgot?</a>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 bg-secondary/30 border-secondary pr-12"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 bg-primary text-primary-foreground font-semibold"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+          )}
+
+          {/* Passkey Login */}
+          {authMethod === 'passkey' && (
+            <div className="space-y-6">
+              <div className="p-8 rounded-xl bg-secondary/20 border border-secondary/50 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Fingerprint className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Use Your Passkey</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Authenticate using your device's biometrics or security key
+                </p>
+                <Button className="w-full h-12 bg-primary font-semibold">
+                  Continue with Passkey
+                </Button>
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Passkeys provide the highest level of security
+              </p>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="text-center space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-secondary"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">New to VDID?</span>
+              </div>
+            </div>
+
+            <Link href="/register">
+              <Button variant="outline" className="w-full h-12 border-secondary hover:bg-secondary/30">
+                Create Your V-ID
+              </Button>
+            </Link>
+          </div>
+
+          <Link href="/">
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-white cursor-pointer">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Home
+            </span>
+          </Link>
+        </div>
       </div>
     </div>
+  );
+}
+
+function AuthTab({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-medium transition-all ${
+        active 
+          ? 'bg-primary text-primary-foreground shadow-lg' 
+          : 'text-muted-foreground hover:text-white'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
