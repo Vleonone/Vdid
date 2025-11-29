@@ -234,8 +234,19 @@ export async function walletAuth(params: {
         lastLoginIp: params.ipAddress,
         loginCount: 1,
       })
-      .returning();
-    
+      .returning({
+        id: users.id,
+        vid: users.vid,
+        did: users.did,
+        email: users.email,
+        displayName: users.displayName,
+        walletAddress: users.walletAddress,
+        ensName: users.ensName,
+        vscoreTotal: users.vscoreTotal,
+        vscoreLevel: users.vscoreLevel,
+        loginCount: users.loginCount,
+      });
+
     user = newUser;
     
     // 添加到 Web3 身份表
