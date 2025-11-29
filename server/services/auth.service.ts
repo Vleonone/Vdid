@@ -176,15 +176,7 @@ export class AuthService {
       vscoreTrust: 100, // 初始信任分 100
       vscoreTotal: calculateTotalVScore(0, 0, 0, 100),
       vscoreLevel: 'Newcomer',
-    }).returning({
-      id: users.id,
-      vid: users.vid,
-      did: users.did,
-      email: users.email,
-      displayName: users.displayName,
-      vscoreTotal: users.vscoreTotal,
-      vscoreLevel: users.vscoreLevel,
-    });
+    }).returning();
 
     // 7. 记录 V-Score 历史
     await db.insert(vscoreHistory).values({

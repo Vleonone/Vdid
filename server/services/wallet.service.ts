@@ -245,6 +245,7 @@ export async function walletAuth(params: {
         vscoreTotal: users.vscoreTotal,
         vscoreLevel: users.vscoreLevel,
         loginCount: users.loginCount,
+        passwordHash: users.passwordHash,
       });
 
     user = newUser;
