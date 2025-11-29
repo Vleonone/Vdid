@@ -107,7 +107,11 @@ export function WalletConnect({ onSuccess, onError, mode = 'login' }: WalletConn
       });
 
       if (!nonceResponse.ok) {
-        throw new Error('Failed to get nonce');
+        const errorData = await nonceResponse.json().catch(() => ({}));
+        const errorMessage = typeof errorData.error === 'string'
+          ? errorData.error
+          : errorData.error?.message || 'Failed to get nonce';
+        throw new Error(errorMessage);
       }
 
       const { message } = await nonceResponse.json();
@@ -134,8 +138,11 @@ export function WalletConnect({ onSuccess, onError, mode = 'login' }: WalletConn
       });
 
       if (!verifyResponse.ok) {
-        const errorData = await verifyResponse.json();
-        throw new Error(errorData.error || 'Verification failed');
+        const errorData = await verifyResponse.json().catch(() => ({}));
+        const errorMessage = typeof errorData.error === 'string'
+          ? errorData.error
+          : errorData.error?.message || 'Verification failed';
+        throw new Error(errorMessage);
       }
 
       const data = await verifyResponse.json();
