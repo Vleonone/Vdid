@@ -35,6 +35,7 @@ export const users = pgTable("users", {
   // 安全设置
   twoFactorEnabled: boolean("two_factor_enabled").default(false),
   twoFactorSecret: text("two_factor_secret"),
+  passkeyEnabled: boolean("passkey_enabled").default(false),
 
   // 邮箱验证
   emailVerified: boolean("email_verified").default(false),
@@ -161,6 +162,9 @@ export const passkeys = pgTable("passkeys", {
   deviceType: text("device_type"),
   transports: text("transports"),
   name: text("name"), // 用户自定义名称
+  deviceName: text("device_name"), // 设备名称
+  aaguid: text("aaguid"), // Authenticator Attestation GUID
+  isActive: boolean("is_active").default(true),
   lastUsed: timestamp("last_used"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

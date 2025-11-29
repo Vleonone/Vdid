@@ -29,7 +29,7 @@ const { users, vscoreHistory, activityLogs } = schema;
 export type VScoreCategory = 'activity' | 'financial' | 'social' | 'trust';
 
 export interface VScoreUpdate {
-  userId: string;
+  userId: number;
   category: VScoreCategory;
   points: number;
   reason: string;
@@ -51,11 +51,11 @@ export interface VScoreInfo {
 }
 
 export interface VScoreHistoryItem {
-  id: string;
+  id: number;
   previousTotal: number;
   newTotal: number;
   change: number;
-  reason: string;
+  reason: string | null;
   createdAt: Date;
   levelChanged: boolean;
   newLevel: string | null;
@@ -97,7 +97,7 @@ export class VScoreService {
   /**
    * 获取用户 V-Score 详情
    */
-  async getVScore(userId: string): Promise<VScoreInfo | null> {
+  async getVScore(userId: number): Promise<VScoreInfo | null> {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
     });
@@ -226,7 +226,7 @@ export class VScoreService {
    * 应用预定义的 V-Score 动作
    */
   async applyAction(
-    userId: string,
+    userId: number,
     actionKey: keyof typeof VSCORE_ACTIONS
   ): Promise<VScoreInfo | null> {
     const action = VSCORE_ACTIONS[actionKey];
@@ -244,7 +244,7 @@ export class VScoreService {
    * 获取 V-Score 历史
    */
   async getHistory(
-    userId: string,
+    userId: number,
     limit: number = 20,
     offset: number = 0
   ): Promise<VScoreHistoryItem[]> {
@@ -303,7 +303,7 @@ export class VScoreService {
   /**
    * 重新计算用户总分 (用于修复数据)
    */
-  async recalculateTotal(userId: string): Promise<VScoreInfo | null> {
+  async recalculateTotal(userId: number): Promise<VScoreInfo | null> {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
     });
