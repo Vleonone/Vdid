@@ -9,6 +9,7 @@ import { generateVID, generateDID, generateSecureToken } from '../lib/vid-genera
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../lib/password';
 import { generateTokenPair, verifyAccessToken, verifyRefreshToken, generateSessionId, TokenPair } from '../lib/jwt';
 import { calculateTotalVScore, getVScoreLevel } from '../../shared/schema';
+import { emailService } from './email.service';
 
 const { users, sessions, activityLogs, vscoreHistory } = schema;
 
@@ -204,6 +205,14 @@ export class AuthService {
       undefined,
       'success'
     );
+
+    // 9. 发送邮箱验证邮件
+    await emailService.sendVerificationEmail({
+      to: newUser.email!,
+      displayName: newUser.displayName || '',
+      verifyToken: emailVerifyToken,
+      vid: newUser.vid,
+    });
 
     return {
       success: true,
@@ -520,13 +529,14 @@ export class AuthService {
   /**
    * 请求密码重置
    */
-  async requestPasswordReset(email: string): Promise<string | null> {
+  async requestPasswordReset(email: string): Promise<boolean> {
     const user = await db.query.users.findFirst({
       where: eq(users.email, email.toLowerCase()),
     });
 
+    // 安全考虑：即使用户不存在也不透露信息
     if (!user) {
-      return null;
+      return true; // 返回 true 以防止邮箱枚举攻击
     }
 
     const resetToken = generateSecureToken(32);
@@ -542,7 +552,14 @@ export class AuthService {
 
     await logActivity(user.id, 'password_reset_request', 'security', {}, undefined, undefined, 'success');
 
-    return resetToken;
+    // 发送密码重置邮件
+    await emailService.sendPasswordResetEmail({
+      to: user.email!,
+      displayName: user.displayName || '',
+      resetToken,
+    });
+
+    return true;
   }
 
   /**
