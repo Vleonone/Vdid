@@ -319,7 +319,7 @@ export async function walletAuth(params: {
 
 // 绑定钱包到现有账户
 export async function bindWallet(params: {
-  userId: string;
+  userId: number;
   address: string;
   signature: string;
   message: string;
@@ -383,14 +383,14 @@ export async function bindWallet(params: {
 }
 
 // 获取用户的所有 Web3 身份
-export async function getUserWeb3Identities(userId: string) {
+export async function getUserWeb3Identities(userId: number) {
   return db.select()
     .from(web3Identities)
     .where(eq(web3Identities.userId, userId));
 }
 
 // 解除钱包绑定
-export async function unbindWallet(userId: string, address: string): Promise<void> {
+export async function unbindWallet(userId: number, address: string): Promise<void> {
   const normalizedAddress = checksumAddress(address);
   
   // 删除 Web3 身份记录

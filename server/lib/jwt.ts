@@ -15,7 +15,7 @@ const JWT_REFRESH_EXPIRES = '7d';  // 刷新令牌 7 天
 
 // Token 类型
 export interface AccessTokenPayload {
-  userId: string | number;
+  userId: number;
   vid: string;
   email: string | null;
   sessionId: string;
@@ -23,7 +23,7 @@ export interface AccessTokenPayload {
 }
 
 export interface RefreshTokenPayload {
-  userId: string | number;
+  userId: number;
   sessionId: string;
   type: 'refresh';
 }
@@ -71,7 +71,7 @@ export function generateRefreshToken(payload: Omit<RefreshTokenPayload, 'type'>)
  * 生成令牌对 (访问令牌 + 刷新令牌)
  */
 export function generateTokenPair(
-  userId: string | number,
+  userId: number,
   vid: string,
   email: string | null,
   sessionId: string
@@ -96,13 +96,17 @@ export function verifyAccessToken(token: string): AccessTokenPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: JWT_ISSUER,
-    }) as AccessTokenPayload;
-    
+    }) as AccessTokenPayload & { userId: string | number };
+
     if (decoded.type !== 'access') {
       return null;
     }
-    
-    return decoded;
+
+    // Convert userId to number (it's stored as string in JWT)
+    return {
+      ...decoded,
+      userId: typeof decoded.userId === 'string' ? parseInt(decoded.userId, 10) : decoded.userId,
+    };
   } catch (error) {
     return null;
   }
@@ -115,13 +119,17 @@ export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: JWT_ISSUER,
-    }) as RefreshTokenPayload;
-    
+    }) as RefreshTokenPayload & { userId: string | number };
+
     if (decoded.type !== 'refresh') {
       return null;
     }
-    
-    return decoded;
+
+    // Convert userId to number (it's stored as string in JWT)
+    return {
+      ...decoded,
+      userId: typeof decoded.userId === 'string' ? parseInt(decoded.userId, 10) : decoded.userId,
+    };
   } catch (error) {
     return null;
   }
@@ -193,7 +201,7 @@ export function generateSessionToken(): string {
  * 签发令牌对 (兼容别名)
  */
 export function signTokens(payload: {
-  userId: string | number;
+  userId: number;
   vid: string;
   sessionToken: string;
 }): { accessToken: string; refreshToken: string } {

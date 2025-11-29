@@ -29,28 +29,30 @@ function generateChallenge(): string {
 }
 
 // 存储 Challenge
-function storeChallenge(userId: string, challenge: string): void {
-  challengeStore.set(userId, {
+function storeChallenge(userId: number | string, challenge: string): void {
+  const key = String(userId);
+  challengeStore.set(key, {
     challenge,
     expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
   });
 }
 
 // 验证并消费 Challenge
-function verifyAndConsumeChallenge(userId: string, challenge: string): boolean {
-  const stored = challengeStore.get(userId);
+function verifyAndConsumeChallenge(userId: number | string, challenge: string): boolean {
+  const key = String(userId);
+  const stored = challengeStore.get(key);
   if (!stored) return false;
   if (stored.expiresAt < new Date()) {
-    challengeStore.delete(userId);
+    challengeStore.delete(key);
     return false;
   }
   if (stored.challenge !== challenge) return false;
-  challengeStore.delete(userId);
+  challengeStore.delete(key);
   return true;
 }
 
 // 生成注册选项
-export async function generateRegistrationOptions(userId: string): Promise<{
+export async function generateRegistrationOptions(userId: number): Promise<{
   challenge: string;
   rp: { name: string; id: string };
   user: { id: string; name: string; displayName: string };
@@ -91,8 +93,8 @@ export async function generateRegistrationOptions(userId: string): Promise<{
       id: RP_ID,
     },
     user: {
-      id: Buffer.from(userId).toString('base64url'),
-      name: user.email,
+      id: Buffer.from(String(userId)).toString('base64url'),
+      name: user.email || user.vid,
       displayName: user.displayName || user.vid,
     },
     pubKeyCredParams: [
@@ -114,7 +116,7 @@ export async function generateRegistrationOptions(userId: string): Promise<{
 
 // 验证注册响应并保存 Passkey
 export async function verifyRegistration(params: {
-  userId: string;
+  userId: number;
   credentialId: string;
   publicKey: string;
   challenge: string;
@@ -147,7 +149,7 @@ export async function verifyRegistration(params: {
       aaguid: params.aaguid,
       deviceName: params.deviceName || 'Unknown Device',
       deviceType: 'platform', // TODO: 从 attestation 解析
-      transports: params.transports,
+      transports: params.transports ? JSON.stringify(params.transports) : null,
       isActive: true,
     })
     .returning();
@@ -180,7 +182,7 @@ export async function verifyRegistration(params: {
 
 // 生成认证选项
 export async function generateAuthenticationOptions(params?: {
-  userId?: string;
+  userId?: number;
   email?: string;
 }): Promise<{
   challenge: string;
@@ -217,7 +219,7 @@ export async function generateAuthenticationOptions(params?: {
     allowCredentials = userPasskeys.map(pk => ({
       id: pk.credentialId,
       type: 'public-key' as const,
-      transports: pk.transports as string[] | undefined,
+      transports: pk.transports ? JSON.parse(pk.transports) : undefined,
     }));
   }
   
@@ -343,7 +345,7 @@ export async function verifyAuthentication(params: {
 }
 
 // 获取用户的所有 Passkeys
-export async function getUserPasskeys(userId: string) {
+export async function getUserPasskeys(userId: number) {
   return db.select({
     id: passkeys.id,
     deviceName: passkeys.deviceName,
@@ -358,7 +360,7 @@ export async function getUserPasskeys(userId: string) {
 }
 
 // 删除 Passkey
-export async function deletePasskey(userId: string, passkeyId: string): Promise<void> {
+export async function deletePasskey(userId: number, passkeyId: number): Promise<void> {
   // 验证 passkey 属于该用户
   const passkey = await db.select()
     .from(passkeys)
@@ -421,7 +423,7 @@ export async function deletePasskey(userId: string, passkeyId: string): Promise<
 }
 
 // 重命名 Passkey
-export async function renamePasskey(userId: string, passkeyId: string, newName: string): Promise<void> {
+export async function renamePasskey(userId: number, passkeyId: number, newName: string): Promise<void> {
   await db.update(passkeys)
     .set({ deviceName: newName })
     .where(and(

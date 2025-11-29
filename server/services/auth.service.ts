@@ -249,6 +249,13 @@ export class AuthService {
     }
 
     // 3. 验证密码
+    if (!user.passwordHash) {
+      await logActivity(user.id, 'login', 'auth', {}, ipAddress, userAgent, 'failure', 'No password set');
+      return {
+        success: false,
+        error: 'Invalid email or password',
+      };
+    }
     const isValidPassword = await verifyPassword(password, user.passwordHash);
     if (!isValidPassword) {
       await logActivity(user.id, 'login', 'auth', {}, ipAddress, userAgent, 'failure', 'Invalid password');

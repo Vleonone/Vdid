@@ -7,6 +7,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authService } from '../services/auth.service';
 import { extractTokenFromHeader } from '../lib/jwt';
+import { authRateLimit, passwordResetRateLimit, strictRateLimit } from '../middleware/rate-limit';
 
 const router = Router();
 
@@ -117,7 +118,7 @@ export async function optionalAuthMiddleware(req: Request, res: Response, next: 
  * POST /api/auth/register
  * 用户注册
  */
-router.post('/register', validateBody(registerSchema), async (req: Request, res: Response) => {
+router.post('/register', strictRateLimit, authRateLimit, validateBody(registerSchema), async (req: Request, res: Response) => {
   try {
     const { email, password, displayName } = req.body;
 
@@ -149,7 +150,7 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
  * POST /api/auth/login
  * 用户登录
  */
-router.post('/login', validateBody(loginSchema), async (req: Request, res: Response) => {
+router.post('/login', strictRateLimit, authRateLimit, validateBody(loginSchema), async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     const userAgent = req.headers['user-agent'];
@@ -316,7 +317,7 @@ router.get('/verify-email/:token', async (req: Request, res: Response) => {
  * POST /api/auth/forgot-password
  * 请求密码重置
  */
-router.post('/forgot-password', validateBody(resetPasswordRequestSchema), async (req: Request, res: Response) => {
+router.post('/forgot-password', passwordResetRateLimit, validateBody(resetPasswordRequestSchema), async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 

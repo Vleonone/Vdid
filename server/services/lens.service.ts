@@ -96,7 +96,7 @@ export async function getLensProfiles(walletAddress: string): Promise<LensProfil
  * 链接 Lens Profile 到 VDID 账户
  */
 export async function linkLensProfile(params: {
-  userId: string;
+  userId: number;
   profileId: string;
   handle: string;
   walletAddress: string;
@@ -180,7 +180,7 @@ export async function linkLensProfile(params: {
 /**
  * 获取用户链接的 Lens Profiles
  */
-export async function getUserLensProfiles(userId: string) {
+export async function getUserLensProfiles(userId: number) {
   return db.select()
     .from(lensProfiles)
     .where(eq(lensProfiles.userId, userId));
@@ -189,7 +189,7 @@ export async function getUserLensProfiles(userId: string) {
 /**
  * 解除 Lens Profile 链接
  */
-export async function unlinkLensProfile(userId: string, profileId: string): Promise<void> {
+export async function unlinkLensProfile(userId: number, profileId: string): Promise<void> {
   const profile = await db.select()
     .from(lensProfiles)
     .where(and(
@@ -257,7 +257,7 @@ export async function unlinkLensProfile(userId: string, profileId: string): Prom
 /**
  * 设置主 Lens Profile
  */
-export async function setPrimaryLensProfile(userId: string, profileId: string): Promise<void> {
+export async function setPrimaryLensProfile(userId: number, profileId: string): Promise<void> {
   // 取消当前主 profile
   await db.update(lensProfiles)
     .set({ isPrimary: false })
@@ -325,7 +325,7 @@ export async function lensAuth(params: {
  * 关注用户 (预留)
  */
 export async function followProfile(
-  followerUserId: string,
+  followerUserId: number,
   targetProfileId: string
 ): Promise<void> {
   // TODO: 调用 Lens API 关注
@@ -336,7 +336,7 @@ export async function followProfile(
  * 取消关注 (预留)
  */
 export async function unfollowProfile(
-  followerUserId: string,
+  followerUserId: number,
   targetProfileId: string
 ): Promise<void> {
   // TODO: 调用 Lens API 取消关注
