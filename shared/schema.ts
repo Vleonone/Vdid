@@ -138,4 +138,24 @@ export type ActivityLog = typeof activityLogs.$inferSelect;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 
 // Safe user type (without sensitive fields)
-export type SafeUser = Omit<User, 'passwordHash' | 'twoFactorSecret'>;
+export type SafeUser = Omit<User, 'passwordHash' | 'twoFactorSecret'>;// V-Score calculation helpers
+export function calculateTotalVScore(components: {
+  activity?: number;
+  financial?: number;
+  social?: number;
+  trust?: number;
+}): number {
+  const activity = components.activity || 0;
+  const financial = components.financial || 0;
+  const social = components.social || 0;
+  const trust = components.trust || 0;
+  return Math.round(activity * 0.30 + financial * 0.35 + social * 0.20 + trust * 0.15);
+}
+
+export function getVScoreLevel(score: number): string {
+  if (score >= 800) return 'Elite';
+  if (score >= 600) return 'Trusted';
+  if (score >= 400) return 'Established';
+  if (score >= 200) return 'Active';
+  return 'Newcomer';
+}
