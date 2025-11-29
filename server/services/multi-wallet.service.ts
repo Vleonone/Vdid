@@ -17,8 +17,8 @@ export type ChainId = keyof typeof SUPPORTED_CHAINS;
 export interface WalletInfo {
   id: number;
   walletAddress: string;
-  chainId: number;
-  chainName: string;
+  chainId: number | null;
+  chainName: string | null;
   isPrimary: boolean;
   label: string | null;
   ensName: string | null;

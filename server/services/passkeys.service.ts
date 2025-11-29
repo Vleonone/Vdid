@@ -123,7 +123,7 @@ export async function verifyRegistration(params: {
   aaguid?: string;
   deviceName?: string;
   transports?: string[];
-}): Promise<{ success: boolean; passkeyId: string }> {
+}): Promise<{ success: boolean; passkeyId: number }> {
   // 验证 challenge
   if (!verifyAndConsumeChallenge(params.userId, params.challenge)) {
     throw new Error('Invalid or expired challenge');
@@ -275,9 +275,9 @@ export async function verifyAuthentication(params: {
   // 更新 counter
   await db.update(passkeys)
     .set({
-      counter: passkey.counter + 1,
-      lastUsedAt: new Date(),
-      useCount: passkey.useCount + 1,
+      counter: (passkey.counter ?? 0) + 1,
+      lastUsed: new Date(),
+      useCount: (passkey.useCount ?? 0) + 1,
     })
     .where(eq(passkeys.id, passkey.id));
   
@@ -350,7 +350,7 @@ export async function getUserPasskeys(userId: number) {
     id: passkeys.id,
     deviceName: passkeys.deviceName,
     deviceType: passkeys.deviceType,
-    lastUsedAt: passkeys.lastUsedAt,
+    lastUsed: passkeys.lastUsed,
     useCount: passkeys.useCount,
     createdAt: passkeys.createdAt,
     isActive: passkeys.isActive,

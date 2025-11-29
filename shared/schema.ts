@@ -32,6 +32,11 @@ export const users = pgTable("users", {
   siweNonce: text("siwe_nonce"),
   siweNonceExpires: timestamp("siwe_nonce_expires"),
 
+  // Lens Protocol
+  lensHandle: text("lens_handle"),
+  lensProfileId: text("lens_profile_id"),
+  lensVerified: boolean("lens_verified").default(false),
+
   // 安全设置
   twoFactorEnabled: boolean("two_factor_enabled").default(false),
   twoFactorSecret: text("two_factor_secret"),
@@ -166,6 +171,7 @@ export const passkeys = pgTable("passkeys", {
   aaguid: text("aaguid"), // Authenticator Attestation GUID
   isActive: boolean("is_active").default(true),
   lastUsed: timestamp("last_used"),
+  useCount: integer("use_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -301,6 +307,7 @@ export const lensProfiles = pgTable("lens_profiles", {
   verifiedAt: timestamp("verified_at"),
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   userIdIdx: index("lens_profiles_user_id_idx").on(table.userId),
   profileIdIdx: index("lens_profiles_profile_id_idx").on(table.profileId),
