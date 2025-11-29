@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from 'url';
 
 // ES Module compatibility
@@ -55,7 +56,7 @@ app.use(helmet({
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://vdid-production-d371.up.railway.app']
+    ? true // Allow all origins in production for now
     : ['http://localhost:5173', 'http://localhost:5000'],
   credentials: true,
 }));
@@ -79,21 +80,56 @@ app.get("/api/health", (req, res) => {
 
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {
-  const clientPath = path.join(__dirname, "../client/dist");
-  app.use(express.static(clientPath));
+  // Try multiple possible paths for the built client
+  const possiblePaths = [
+    path.join(__dirname, "../client/dist"),      // /app/server/../client/dist = /app/client/dist
+    path.join(__dirname, "../dist"),             // /app/server/../dist = /app/dist
+    path.join(__dirname, "../../client/dist"),   // In case of different structure
+    path.join(__dirname, "../../dist"),          // /app/dist from different location
+    "/app/client/dist",                          // Absolute path
+    "/app/dist",                                 // Absolute path alternative
+  ];
   
-  // SPA fallback - must be after API routes
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api")) {
-      return next();
+  let clientPath = "";
+  
+  for (const p of possiblePaths) {
+    const indexPath = path.join(p, "index.html");
+    console.log(`Checking path: ${p}`);
+    if (fs.existsSync(indexPath)) {
+      clientPath = p;
+      console.log(`✓ Found client build at: ${clientPath}`);
+      break;
     }
-    res.sendFile(path.join(clientPath, "index.html"), (err) => {
-      if (err) {
-        console.error("Error serving index.html:", err);
-        res.status(500).json({ error: "Internal server error" });
+  }
+  
+  if (!clientPath) {
+    console.error("ERROR: Could not find client build!");
+    console.log("Searched paths:", possiblePaths);
+    console.log("Current __dirname:", __dirname);
+    
+    // List directory contents for debugging
+    try {
+      console.log("\n/app contents:", fs.readdirSync("/app"));
+      if (fs.existsSync("/app/client")) {
+        console.log("/app/client contents:", fs.readdirSync("/app/client"));
       }
+      if (fs.existsSync("/app/dist")) {
+        console.log("/app/dist contents:", fs.readdirSync("/app/dist"));
+      }
+    } catch (e) {
+      console.log("Could not list directories:", e);
+    }
+  } else {
+    app.use(express.static(clientPath));
+    
+    // SPA fallback - must be after API routes
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api")) {
+        return next();
+      }
+      res.sendFile(path.join(clientPath, "index.html"));
     });
-  });
+  }
 }
 
 // Error handling middleware
@@ -108,6 +144,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`__dirname: ${__dirname}`);
 });
 
 export default app;
