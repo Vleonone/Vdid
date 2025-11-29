@@ -1,143 +1,148 @@
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { 
-  LayoutDashboard, Shield, Layers, Settings, LogOut, 
-  Menu, X, ChevronDown, User, Bell
+  LayoutDashboard, 
+  Shield, 
+  Grid3X3,
+  Settings, 
+  LogOut,
+  Menu,
+  X,
+  ChevronRight
 } from "lucide-react";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [location, setLocation] = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+const navItems = [
+  { path: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { path: "/dashboard/security", label: "Security", icon: Shield },
+  { path: "/dashboard/apps", label: "Apps", icon: Grid3X3 },
+  { path: "/dashboard/settings", label: "Settings", icon: Settings },
+];
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setLocation('/');
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [location] = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
-  const navItems = [
-    { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Overview', path: '/dashboard' },
-    { icon: <Shield className="w-5 h-5" />, label: 'Security', path: '/dashboard/security' },
-    { icon: <Layers className="w-5 h-5" />, label: 'Connected Apps', path: '/dashboard/apps' },
-    { icon: <Settings className="w-5 h-5" />, label: 'Settings', path: '/dashboard/settings' },
-  ];
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Navbar */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-secondary/50 bg-background/80 backdrop-blur-xl">
-        <div className="flex h-full items-center justify-between px-4 lg:px-6">
-          {/* Logo */}
-          <div className="flex items-center gap-4">
-            <button 
-              className="lg:hidden p-2 text-muted-foreground hover:text-white"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            
+    <div className="min-h-screen bg-black">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-zinc-800 bg-black/80 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <Link href="/">
-              <div className="flex items-center gap-2 cursor-pointer">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">V</span>
-                </div>
-                <span className="font-bold text-lg hidden sm:block">
-                  <span className="text-white">VD</span>
-                  <span className="text-primary">ID</span>
-                </span>
-              </div>
+              <span className="text-xl font-bold cursor-pointer">
+                <span className="text-white">VD</span>
+                <span className="text-[#5865F2]">ID</span>
+              </span>
             </Link>
-          </div>
 
-          {/* Right Section */}
-          <div className="flex items-center gap-3">
-            <button className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-white transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full"></span>
-            </button>
-            
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/30 border border-secondary/50">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
-              </div>
-              <span className="text-sm font-medium">My Account</span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </div>
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location === item.path;
+                return (
+                  <Link key={item.path} href={item.path}>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "gap-2",
+                        isActive 
+                          ? "bg-[#5865F2]/10 text-[#5865F2]" 
+                          : "text-zinc-400 hover:text-white"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                );
+              })}
+              <Button
+                variant="ghost"
+                onClick={handleLogout}
+                className="gap-2 text-zinc-400 hover:text-red-400"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </nav>
 
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-white"
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              <LogOut className="w-4 h-4" />
-            </Button>
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6 text-zinc-400" />
+              ) : (
+                <Menu className="h-6 w-6 text-zinc-400" />
+              )}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 border-r border-secondary/50 bg-background">
-        <nav className="p-4 space-y-2">
-          {navItems.map((item) => (
-            <Link key={item.path} href={item.path}>
-              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${
-                location === item.path || (item.path === '/dashboard' && location === '/dashboard')
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-white hover:bg-secondary/50'
-              }`}>
-                {item.icon}
-                <span className="font-medium">{item.label}</span>
-              </div>
-            </Link>
-          ))}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-secondary/50">
-          <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20">
-            <div className="text-sm font-medium mb-1">V-Score</div>
-            <div className="text-2xl font-bold text-primary">830</div>
-            <div className="text-xs text-muted-foreground mt-1">Top 6% of users</div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Mobile Sidebar */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute left-0 top-16 bottom-0 w-64 bg-background border-r border-secondary/50 animate-in slide-in-from-left duration-200">
-            <nav className="p-4 space-y-2">
-              {navItems.map((item) => (
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 top-16 z-40 bg-black/95 backdrop-blur-md">
+          <nav className="p-4 space-y-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.path;
+              return (
                 <Link key={item.path} href={item.path}>
-                  <div 
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${
-                      location === item.path 
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:text-white hover:bg-secondary/50'
-                    }`}
-                    onClick={() => setSidebarOpen(false)}
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "w-full flex items-center justify-between p-4 rounded-lg transition-colors",
+                      isActive
+                        ? "bg-[#5865F2]/10 text-[#5865F2]"
+                        : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+                    )}
                   >
-                    {item.icon}
-                    <span className="font-medium">{item.label}</span>
-                  </div>
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </div>
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
                 </Link>
-              ))}
-            </nav>
-          </aside>
+              );
+            })}
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-between p-4 rounded-lg text-red-400 hover:bg-zinc-900"
+            >
+              <div className="flex items-center gap-3">
+                <LogOut className="h-5 w-5" />
+                Logout
+              </div>
+            </button>
+          </nav>
         </div>
       )}
 
       {/* Main Content */}
-      <main className="lg:pl-64 pt-16">
-        <div className="p-6 lg:p-8">
-          {children}
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
       </main>
     </div>
   );
