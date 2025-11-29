@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 /**
  * JWT (JSON Web Token) Utility
  * 用于生成和验证访问令牌
@@ -179,7 +178,33 @@ export function isTokenExpiringSoon(token: string, thresholdMinutes: number = 5)
 export function generateSessionId(): string {
   return generateSecureToken(16);
 }
-// 生成 Session Token
+
+/**
+ * 生成 Session Token (兼容别名)
+ */
 export function generateSessionToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+  return generateSecureToken(32);
+}
+
+/**
+ * 签发令牌对 (兼容别名)
+ */
+export function signTokens(payload: {
+  userId: string;
+  vid: string;
+  sessionToken: string;
+}): { accessToken: string; refreshToken: string } {
+  const accessToken = generateAccessToken({
+    userId: payload.userId,
+    vid: payload.vid,
+    email: '',
+    sessionId: payload.sessionToken,
+  });
+  
+  const refreshToken = generateRefreshToken({
+    userId: payload.userId,
+    sessionId: payload.sessionToken,
+  });
+  
+  return { accessToken, refreshToken };
 }
