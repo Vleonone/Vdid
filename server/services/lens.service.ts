@@ -41,55 +41,142 @@ interface LensProfileData {
 }
 
 /**
+ * 执行 Lens GraphQL 查询
+ */
+async function lensGraphQL<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  const response = await fetch(LENS_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Lens API error: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  if (result.errors) {
+    throw new Error(result.errors[0]?.message || 'Lens API query failed');
+  }
+
+  return result.data;
+}
+
+/**
  * 验证用户是否拥有 Lens Profile
- * 
- * TODO: 实现实际的 Lens API 调用
  */
 export async function verifyLensOwnership(
   walletAddress: string,
   profileId: string
 ): Promise<boolean> {
-  // TODO: 调用 Lens API 验证
-  // const query = `
-  //   query Profile($profileId: ProfileId!) {
-  //     profile(request: { forProfileId: $profileId }) {
-  //       id
-  //       ownedBy { address }
-  //     }
-  //   }
-  // `;
-  
-  console.log(`[Lens] Verifying ownership: ${walletAddress} owns ${profileId}`);
-  
-  // 预留实现
-  return true;
+  try {
+    const query = `
+      query Profile($profileId: ProfileId!) {
+        profile(request: { forProfileId: $profileId }) {
+          id
+          ownedBy {
+            address
+          }
+        }
+      }
+    `;
+
+    const data = await lensGraphQL<{
+      profile: { id: string; ownedBy: { address: string } } | null;
+    }>(query, { profileId });
+
+    if (!data.profile) {
+      return false;
+    }
+
+    return data.profile.ownedBy.address.toLowerCase() === walletAddress.toLowerCase();
+  } catch (error) {
+    console.error('[Lens] Ownership verification failed:', error);
+    return false;
+  }
 }
 
 /**
  * 获取用户的 Lens Profiles
- * 
- * TODO: 实现实际的 Lens API 调用
  */
 export async function getLensProfiles(walletAddress: string): Promise<LensProfileData[]> {
-  // TODO: 调用 Lens API
-  // const query = `
-  //   query Profiles($ownedBy: [EvmAddress!]) {
-  //     profiles(request: { where: { ownedBy: $ownedBy } }) {
-  //       items {
-  //         id
-  //         handle { localName }
-  //         ownedBy { address }
-  //         metadata { displayName bio }
-  //         stats { followers following posts }
-  //       }
-  //     }
-  //   }
-  // `;
-  
-  console.log(`[Lens] Fetching profiles for: ${walletAddress}`);
-  
-  // 返回空数组（预留）
-  return [];
+  try {
+    const query = `
+      query Profiles($ownedBy: [EvmAddress!]) {
+        profiles(request: { where: { ownedBy: $ownedBy } }) {
+          items {
+            id
+            handle {
+              localName
+              fullHandle
+            }
+            ownedBy {
+              address
+            }
+            metadata {
+              displayName
+              bio
+              picture {
+                ... on ImageSet {
+                  optimized {
+                    uri
+                  }
+                }
+              }
+              coverPicture {
+                ... on ImageSet {
+                  optimized {
+                    uri
+                  }
+                }
+              }
+            }
+            stats {
+              followers
+              following
+              posts
+            }
+          }
+        }
+      }
+    `;
+
+    const data = await lensGraphQL<{
+      profiles: {
+        items: Array<{
+          id: string;
+          handle: { localName: string; fullHandle: string };
+          ownedBy: { address: string };
+          metadata?: {
+            displayName?: string;
+            bio?: string;
+            picture?: { optimized?: { uri: string } };
+            coverPicture?: { optimized?: { uri: string } };
+          };
+          stats?: { followers: number; following: number; posts: number };
+        }>;
+      };
+    }>(query, { ownedBy: [walletAddress] });
+
+    return data.profiles.items.map((item) => ({
+      id: item.id,
+      handle: item.handle.fullHandle,
+      ownedBy: item.ownedBy.address,
+      metadata: {
+        displayName: item.metadata?.displayName,
+        bio: item.metadata?.bio,
+        picture: item.metadata?.picture?.optimized?.uri,
+        coverPicture: item.metadata?.coverPicture?.optimized?.uri,
+      },
+      stats: item.stats,
+    }));
+  } catch (error) {
+    console.error('[Lens] Failed to fetch profiles:', error);
+    return [];
+  }
 }
 
 /**
@@ -288,13 +375,61 @@ export async function setPrimaryLensProfile(userId: number, profileId: string): 
 
 /**
  * 同步 Lens Profile 数据
- * 
- * TODO: 实现从 Lens API 同步最新数据
  */
 export async function syncLensProfile(profileId: string): Promise<void> {
-  console.log(`[Lens] Syncing profile: ${profileId}`);
-  
-  // TODO: 调用 Lens API 获取最新数据并更新数据库
+  try {
+    const query = `
+      query Profile($profileId: ProfileId!) {
+        profile(request: { forProfileId: $profileId }) {
+          id
+          handle {
+            fullHandle
+          }
+          metadata {
+            displayName
+            bio
+          }
+          stats {
+            followers
+            following
+            posts
+          }
+        }
+      }
+    `;
+
+    const data = await lensGraphQL<{
+      profile: {
+        id: string;
+        handle: { fullHandle: string };
+        metadata?: { displayName?: string; bio?: string };
+        stats?: { followers: number; following: number; posts: number };
+      } | null;
+    }>(query, { profileId });
+
+    if (!data.profile) {
+      console.log(`[Lens] Profile not found: ${profileId}`);
+      return;
+    }
+
+    // 更新数据库中的 profile 信息
+    await db.update(lensProfiles)
+      .set({
+        handle: data.profile.handle.fullHandle,
+        displayName: data.profile.metadata?.displayName,
+        bio: data.profile.metadata?.bio,
+        followersCount: data.profile.stats?.followers ?? 0,
+        followingCount: data.profile.stats?.following ?? 0,
+        postsCount: data.profile.stats?.posts ?? 0,
+        lastSyncAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(lensProfiles.profileId, profileId));
+
+    console.log(`[Lens] Synced profile: ${profileId}`);
+  } catch (error) {
+    console.error(`[Lens] Failed to sync profile ${profileId}:`, error);
+  }
 }
 
 /**

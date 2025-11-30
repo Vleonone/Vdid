@@ -3,10 +3,172 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, Mail, Fingerprint, ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Wallet, Mail, Fingerprint, ArrowLeft, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { WalletConnect } from "@/components/wallet-connect";
 
 type AuthMethod = 'wallet' | 'email' | 'passkey';
+
+// Passkey Login Component
+function PasskeyLogin({
+  onSuccess,
+  onError
+}: {
+  onSuccess: (data: any) => void;
+  onError: (err: Error) => void;
+}) {
+  const [status, setStatus] = useState<'idle' | 'authenticating' | 'success' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePasskeyLogin = async () => {
+    try {
+      setStatus('authenticating');
+      setError(null);
+
+      // 1. 获取认证选项
+      const optionsRes = await fetch('/api/passkeys/authenticate/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      if (!optionsRes.ok) {
+        throw new Error('Failed to get authentication options');
+      }
+
+      const options = await optionsRes.json();
+
+      // 2. 调用 WebAuthn API
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+          timeout: options.timeout,
+          rpId: options.rpId,
+          allowCredentials: options.allowCredentials.map((cred: any) => ({
+            id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+            type: cred.type,
+            transports: cred.transports,
+          })),
+          userVerification: options.userVerification as UserVerificationRequirement,
+        },
+      }) as PublicKeyCredential;
+
+      if (!credential) {
+        throw new Error('Authentication cancelled');
+      }
+
+      const response = credential.response as AuthenticatorAssertionResponse;
+
+      // 3. 发送验证请求
+      const verifyRes = await fetch('/api/passkeys/authenticate/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credentialId: arrayBufferToBase64Url(credential.rawId),
+          authenticatorData: arrayBufferToBase64Url(response.authenticatorData),
+          clientDataJSON: arrayBufferToBase64Url(response.clientDataJSON),
+          signature: arrayBufferToBase64Url(response.signature),
+          challenge: options.challenge,
+        }),
+      });
+
+      if (!verifyRes.ok) {
+        const errorData = await verifyRes.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Authentication failed');
+      }
+
+      const data = await verifyRes.json();
+      setStatus('success');
+      onSuccess(data);
+
+    } catch (err) {
+      const error = err as Error;
+      console.error('Passkey authentication error:', error);
+      setError(error.message || 'Authentication failed');
+      setStatus('error');
+      onError(error);
+    }
+  };
+
+  // Helper function to convert ArrayBuffer to base64url
+  function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  if (status === 'authenticating') {
+    return (
+      <div className="space-y-6">
+        <div className="p-8 rounded-xl bg-secondary/20 border border-secondary/50 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+          <h3 className="font-semibold text-lg mb-2">Authenticating...</h3>
+          <p className="text-sm text-muted-foreground">
+            Complete the authentication on your device
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="space-y-6">
+        <div className="p-8 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-green-500" />
+          </div>
+          <h3 className="font-semibold text-lg mb-2">Success!</h3>
+          <p className="text-sm text-muted-foreground">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="space-y-6">
+        <div className="p-8 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="font-semibold text-lg mb-2">Authentication Failed</h3>
+          <p className="text-sm text-red-400 mb-4">{error}</p>
+          <Button onClick={handlePasskeyLogin} className="w-full h-12 bg-primary font-semibold">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="p-8 rounded-xl bg-secondary/20 border border-secondary/50 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <Fingerprint className="w-8 h-8 text-primary" />
+        </div>
+        <h3 className="font-semibold text-lg mb-2">Use Your Passkey</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Authenticate using your device's biometrics or security key
+        </p>
+        <Button
+          onClick={handlePasskeyLogin}
+          className="w-full h-12 bg-primary font-semibold"
+        >
+          Continue with Passkey
+        </Button>
+      </div>
+      <p className="text-center text-sm text-muted-foreground">
+        Passkeys provide the highest level of security
+      </p>
+    </div>
+  );
+}
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -214,23 +376,10 @@ export default function Login() {
 
           {/* Passkey Login */}
           {authMethod === 'passkey' && (
-            <div className="space-y-6">
-              <div className="p-8 rounded-xl bg-secondary/20 border border-secondary/50 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <Fingerprint className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg mb-2">Use Your Passkey</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Authenticate using your device's biometrics or security key
-                </p>
-                <Button className="w-full h-12 bg-primary font-semibold">
-                  Continue with Passkey
-                </Button>
-              </div>
-              <p className="text-center text-sm text-muted-foreground">
-                Passkeys provide the highest level of security
-              </p>
-            </div>
+            <PasskeyLogin
+              onSuccess={handleWalletSuccess}
+              onError={(err) => setError(err.message)}
+            />
           )}
 
           {/* Footer */}
