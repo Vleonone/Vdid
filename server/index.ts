@@ -18,6 +18,9 @@ import { globalRateLimit } from './middleware/rate-limit';
 // Error handling
 import { errorHandler, notFoundHandler, requestIdMiddleware } from './middleware/error-handler';
 
+// Database migration
+import { runMigrations } from './db/migrate';
+
 // ES Module compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -200,9 +203,20 @@ app.use(errorHandler);
 
 // Start server
 const port = parseInt(config.PORT, 10);
-app.listen(port, () => {
-  printConfigSummary();
-  console.log(`🚀 Server running on port ${port}`);
+
+// Run migrations before starting server
+runMigrations().then(() => {
+  app.listen(port, () => {
+    printConfigSummary();
+    console.log(`🚀 Server running on port ${port}`);
+  });
+}).catch((err) => {
+  console.error('Failed to run migrations:', err);
+  // Start anyway
+  app.listen(port, () => {
+    printConfigSummary();
+    console.log(`🚀 Server running on port ${port}`);
+  });
 });
 
 export default app;
