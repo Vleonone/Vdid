@@ -22,16 +22,9 @@ export const strictRateLimit = rateLimit({
     error: 'Too many attempts. Please try again in 15 minutes.',
     retryAfter: 15 * 60,
   },
-  standardHeaders: true, // 返回 RateLimit-* headers
+  standardHeaders: true,
   legacyHeaders: false,
-  // 使用 IP 作为标识符
-  keyGenerator: (req) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
-  },
-  skip: (req) => {
-    // 在测试环境跳过限制
-    return config.NODE_ENV === 'test';
-  },
+  skip: (req) => config.NODE_ENV === 'test',
 });
 
 /**
@@ -48,15 +41,7 @@ export const authRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // 结合 IP 和 email (如果有)
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    const email = req.body?.email?.toLowerCase() || '';
-    return `${ip}:${email}`;
-  },
-  skip: (req) => {
-    return config.NODE_ENV === 'test';
-  },
+  skip: (req) => config.NODE_ENV === 'test',
 });
 
 /**
@@ -72,12 +57,7 @@ export const passwordResetRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
-  },
-  skip: (req) => {
-    return config.NODE_ENV === 'test';
-  },
+  skip: (req) => config.NODE_ENV === 'test',
 });
 
 /**
@@ -93,12 +73,7 @@ export const standardRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
-  },
-  skip: (req) => {
-    return config.NODE_ENV === 'test';
-  },
+  skip: (req) => config.NODE_ENV === 'test',
 });
 
 /**
@@ -114,12 +89,7 @@ export const relaxedRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
-  },
-  skip: (req) => {
-    return config.NODE_ENV === 'test';
-  },
+  skip: (req) => config.NODE_ENV === 'test',
 });
 
 /**
@@ -135,12 +105,7 @@ export const walletRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
-  },
-  skip: (req) => {
-    return config.NODE_ENV === 'test';
-  },
+  skip: (req) => config.NODE_ENV === 'test',
 });
 
 /**
@@ -156,11 +121,5 @@ export const globalRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
-  },
-  skip: (req) => {
-    // 跳过健康检查
-    return req.path === '/api/health' || config.NODE_ENV === 'test';
-  },
+  skip: (req) => req.path === '/api/health' || config.NODE_ENV === 'test',
 });
