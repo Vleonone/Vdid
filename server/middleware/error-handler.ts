@@ -136,6 +136,10 @@ export function errorHandler(
     statusCode = 503;
     errorCode = 'SERVICE_UNAVAILABLE';
     message = 'Database connection failed';
+  } else if (err instanceof Error) {
+    // For plain Error objects, show the actual message in development
+    // In production, keep the generic message for security
+    message = !isProd ? err.message : 'An unexpected error occurred';
   }
 
   // Build error response
