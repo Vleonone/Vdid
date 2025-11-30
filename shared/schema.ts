@@ -13,7 +13,7 @@ export const users = pgTable("users", {
   email: text("email").unique(),
   displayName: text("display_name"),
   avatar: text("avatar"),
-  avatarUrl: text("avatar_url"),
+  // avatarUrl removed - use avatar instead
   passwordHash: text("password_hash"),
 
   // 账户状态
